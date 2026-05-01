@@ -1,0 +1,969 @@
+﻿@page
+@model GMAO.Pages.Dashboard.IndexModel
+@{
+    Layout = null;
+    var companyName = ViewData["CompanyName"]?.ToString() ?? "Entreprise Nationale Sonatrach";
+    var companyCode = ViewData["CompanyCode"]?.ToString() ?? "4@gml";
+    var userName = ViewData["UserName"]?.ToString() ?? "Ahmed Bensaid";
+    var userFirstName = ViewData["UserFirstName"]?.ToString() ?? "Ahmed";
+    var userInitials = ViewData["UserInitials"]?.ToString() ?? "AB";
+}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - GMAO</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+</head>
+<body class="gmao-body">
+    <nav class="gmao-navbar d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-link text-white p-0" id="sidebar-toggle" aria-label="Basculer le menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div class="gmao-logo d-flex align-items-center gap-2">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 8.25A3.75 3.75 0 1 1 8.25 12 3.75 3.75 0 0 1 12 8.25Zm9 3.75a7.92 7.92 0 0 0-.12-1.37l2.07-1.6-1.9-3.3-2.52 1a7.98 7.98 0 0 0-2.37-1.37l-.38-2.66H9.22l-.38 2.66A7.98 7.98 0 0 0 6.47 6.73l-2.52-1-1.9 3.3 2.07 1.6A7.92 7.92 0 0 0 4 12c0 .47.04.93.12 1.37l-2.07 1.6 1.9 3.3 2.52-1a7.98 7.98 0 0 0 2.37 1.37l.38 2.66h5.56l.38-2.66a7.98 7.98 0 0 0 2.37-1.37l2.52 1 1.9-3.3-2.07-1.6c.08-.44.12-.9.12-1.37Z" fill="currentColor" />
+                </svg>
+                <span class="fw-bold">GMAO Pro</span>
+            </div>
+        </div>
+        <div class="gmao-search">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-0 text-white-50"><i class="fa-solid fa-search"></i></span>
+                <input type="text" class="form-control gmao-search-input" placeholder="Rechercher un équipement, OT, technicien..." />
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-link text-white position-relative" data-bs-toggle="tooltip" data-bs-title="Notifications">
+                <i class="fa-regular fa-bell"></i>
+                <span class="badge bg-danger gmao-badge">4</span>
+            </button>
+            <button class="btn btn-link text-white" data-bs-toggle="tooltip" data-bs-title="Messages">
+                <i class="fa-regular fa-envelope"></i>
+            </button>
+            <button class="btn btn-link text-white" data-bs-toggle="tooltip" data-bs-title="Aide">
+                <i class="fa-regular fa-circle-question"></i>
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-link text-white dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="gmao-avatar">@userInitials</span>
+                    <span class="d-none d-lg-inline">@userName</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#"><i class="fa-regular fa-user-circle me-2"></i>Mon profil</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fa-solid fa-cog me-2"></i>Paramètres</a></li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><a class="dropdown-item text-danger" href="/Auth/Login"><i class="fa-solid fa-sign-out-alt me-2"></i>Déconnexion</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="sidebar-backdrop" class="gmao-backdrop"></div>
+
+    <aside id="gmao-sidebar" class="gmao-sidebar">
+        <div class="gmao-sidebar-header">
+            <div>
+                <div class="gmao-company-name">@companyName</div>
+                <span class="badge rounded-pill gmao-company-code">@companyCode</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-3">
+                <span class="gmao-user-mini">@userInitials</span>
+                <div class="gmao-user-name">@userName</div>
+            </div>
+        </div>
+
+        <div class="gmao-sidebar-section">
+            <div class="sidebar-section-title">Tableau de bord</div>
+            <a class="nav-link gmao-nav-link active" data-view="view-dashboard" href="#view-dashboard"><i class="fa-solid fa-tachometer-alt"></i><span class="sidebar-label">Accueil / KPIs</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-reports" href="#view-reports"><i class="fa-solid fa-chart-bar"></i><span class="sidebar-label">Rapports &amp; Statistiques</span></a>
+        </div>
+
+        <div class="gmao-sidebar-section">
+            <div class="sidebar-section-title">Arborescence technique</div>
+            <a class="nav-link gmao-nav-link" data-view="view-tree" href="#view-tree"><i class="fa-solid fa-sitemap"></i><span class="sidebar-label">Arborescence complète</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-sites" href="#view-sites"><i class="fa-solid fa-industry"></i><span class="sidebar-label">Sites / Usines</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-departments" href="#view-departments"><i class="fa-solid fa-th-large"></i><span class="sidebar-label">Départements / Zones</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-workshops" href="#view-workshops"><i class="fa-solid fa-warehouse"></i><span class="sidebar-label">Ateliers / Bâtiments</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-lines" href="#view-lines"><i class="fa-solid fa-project-diagram"></i><span class="sidebar-label">Lignes / Systèmes</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-equipment" href="#view-equipment"><i class="fa-solid fa-cogs"></i><span class="sidebar-label">Équipements</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-subassembly" href="#view-subassembly"><i class="fa-solid fa-puzzle-piece"></i><span class="sidebar-label">Sous-ensembles</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-organs" href="#view-organs"><i class="fa-solid fa-microchip"></i><span class="sidebar-label">Organes / Modules</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-components" href="#view-components"><i class="fa-solid fa-circle"></i><span class="sidebar-label">Composants</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-spare-parts" href="#view-spare-parts"><i class="fa-solid fa-box-open"></i><span class="sidebar-label">Pièces de rechange</span></a>
+        </div>
+
+        <div class="gmao-sidebar-section">
+            <div class="sidebar-section-title">Maintenance</div>
+            <a class="nav-link gmao-nav-link" data-view="view-workorders" href="#view-workorders"><i class="fa-solid fa-clipboard-list"></i><span class="sidebar-label">Ordres de travail (OT)</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-planning" href="#view-planning"><i class="fa-solid fa-calendar-alt"></i><span class="sidebar-label">Planning préventif</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-history" href="#view-history"><i class="fa-solid fa-history"></i><span class="sidebar-label">Historique interventions</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-failures" href="#view-failures"><i class="fa-solid fa-exclamation-triangle"></i><span class="sidebar-label">Pannes &amp; défaillances</span></a>
+        </div>
+
+        <div class="gmao-sidebar-section">
+            <div class="sidebar-section-title">Ressources</div>
+            <a class="nav-link gmao-nav-link" data-view="view-technicians" href="#view-technicians"><i class="fa-solid fa-users"></i><span class="sidebar-label">Techniciens &amp; équipes</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-suppliers" href="#view-suppliers"><i class="fa-solid fa-truck"></i><span class="sidebar-label">Fournisseurs</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-stock" href="#view-stock"><i class="fa-solid fa-boxes"></i><span class="sidebar-label">Stock pièces</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-contracts" href="#view-contracts"><i class="fa-solid fa-file-contract"></i><span class="sidebar-label">Contrats de maintenance</span></a>
+        </div>
+
+        <div class="gmao-sidebar-section">
+            <div class="sidebar-section-title">Administration</div>
+            <a class="nav-link gmao-nav-link" data-view="view-company" href="#view-company"><i class="fa-solid fa-building"></i><span class="sidebar-label">Mon entreprise</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-users" href="#view-users"><i class="fa-solid fa-user-shield"></i><span class="sidebar-label">Utilisateurs &amp; rôles</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-settings" href="#view-settings"><i class="fa-solid fa-cog"></i><span class="sidebar-label">Paramètres système</span></a>
+        </div>
+    </aside>
+
+    <main class="gmao-main" id="main-content">
+        <section class="gmao-view active" id="view-dashboard" data-title="Tableau de bord">
+            <div class="gmao-welcome">
+                <div>
+                    <h2>Bonjour, @userFirstName 👋</h2>
+                    <div class="gmao-date" id="current-date"></div>
+                    <p>Vous avez 12 ordres de travail en attente aujourd'hui.</p>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="kpi-icon text-primary"><i class="fa-solid fa-cogs"></i></div>
+                                    <div class="kpi-value" data-target="142">0</div>
+                                    <div class="kpi-label">Total équipements</div>
+                                </div>
+                                <div class="kpi-trend text-success"><i class="fa-solid fa-arrow-up"></i> 3.8%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="kpi-icon text-warning"><i class="fa-solid fa-clipboard"></i></div>
+                                    <div class="kpi-value" data-target="23">0</div>
+                                    <div class="kpi-label">OT en cours</div>
+                                </div>
+                                <div class="kpi-trend text-danger"><i class="fa-solid fa-arrow-down"></i> 1.2%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="kpi-icon text-success"><i class="fa-solid fa-check-circle"></i></div>
+                                    <div class="kpi-value" data-target="87">0</div>
+                                    <div class="kpi-label">OT clôturés</div>
+                                </div>
+                                <div class="kpi-trend text-success"><i class="fa-solid fa-arrow-up"></i> 5.1%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="kpi-icon text-danger"><i class="fa-solid fa-exclamation"></i></div>
+                                    <div class="kpi-value" data-target="5">0</div>
+                                    <div class="kpi-label">Pannes actives</div>
+                                </div>
+                                <div class="kpi-trend text-danger"><i class="fa-solid fa-arrow-down"></i> 2.4%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-2">
+                <div class="col-lg-7">
+                    <div class="card gmao-chart-card">
+                        <div class="card-header">Interventions par mois</div>
+                        <div class="card-body">
+                            <canvas id="interventionsChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card gmao-chart-card">
+                        <div class="card-header">Répartition criticité équipements</div>
+                        <div class="card-body">
+                            <canvas id="criticityChart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-2">
+                <div class="col-lg-7">
+                    <div class="card">
+                        <div class="card-header">Derniers Ordres de Travail</div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>N° OT</th>
+                                            <th>Équipement</th>
+                                            <th>Type</th>
+                                            <th>Technicien</th>
+                                            <th>Statut</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>OT-4587</td>
+                                            <td>Pompe P-120</td>
+                                            <td>Correctif</td>
+                                            <td>N. Slimani</td>
+                                            <td><span class="badge bg-primary">En cours</span></td>
+                                            <td>12/04/2026</td>
+                                        </tr>
+                                        <tr>
+                                            <td>OT-4582</td>
+                                            <td>Compresseur C-05</td>
+                                            <td>Préventif</td>
+                                            <td>L. Hadj</td>
+                                            <td><span class="badge bg-warning text-dark">En attente</span></td>
+                                            <td>11/04/2026</td>
+                                        </tr>
+                                        <tr>
+                                            <td>OT-4573</td>
+                                            <td>Convoyeur CV-11</td>
+                                            <td>Correctif</td>
+                                            <td>K. Bensaid</td>
+                                            <td><span class="badge bg-success">Terminé</span></td>
+                                            <td>10/04/2026</td>
+                                        </tr>
+                                        <tr>
+                                            <td>OT-4561</td>
+                                            <td>Générateur G-02</td>
+                                            <td>Urgent</td>
+                                            <td>R. Ait</td>
+                                            <td><span class="badge bg-danger">Urgent</span></td>
+                                            <td>09/04/2026</td>
+                                        </tr>
+                                        <tr>
+                                            <td>OT-4559</td>
+                                            <td>Vanne V-44</td>
+                                            <td>Préventif</td>
+                                            <td>H. Meziane</td>
+                                            <td><span class="badge bg-primary">En cours</span></td>
+                                            <td>08/04/2026</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card">
+                        <div class="card-header">Équipements critiques</div>
+                        <div class="card-body">
+                            <div class="gmao-equipment-item">
+                                <div>
+                                    <div class="fw-bold">TAG-CV-007</div>
+                                    <div class="text-muted">Convoyeur principal</div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-danger">Critique A</span>
+                                    <div class="small text-muted">Dernière intervention: 03/04/2026</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary">Voir</button>
+                            </div>
+                            <div class="gmao-equipment-item">
+                                <div>
+                                    <div class="fw-bold">TAG-P-120</div>
+                                    <div class="text-muted">Pompe d'injection</div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-warning text-dark">Important B</span>
+                                    <div class="small text-muted">Dernière intervention: 05/04/2026</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary">Voir</button>
+                            </div>
+                            <div class="gmao-equipment-item">
+                                <div>
+                                    <div class="fw-bold">TAG-C-05</div>
+                                    <div class="text-muted">Compresseur air</div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">Standard C</span>
+                                    <div class="small text-muted">Dernière intervention: 01/04/2026</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary">Voir</button>
+                            </div>
+                            <div class="gmao-equipment-item">
+                                <div>
+                                    <div class="fw-bold">TAG-G-02</div>
+                                    <div class="text-muted">Générateur principal</div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-danger">Critique A</span>
+                                    <div class="small text-muted">Dernière intervention: 02/04/2026</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary">Voir</button>
+                            </div>
+                            <div class="gmao-equipment-item">
+                                <div>
+                                    <div class="fw-bold">TAG-V-44</div>
+                                    <div class="text-muted">Vanne de sécurité</div>
+                                </div>
+                                <div>
+                                    <span class="badge bg-warning text-dark">Important B</span>
+                                    <div class="small text-muted">Dernière intervention: 06/04/2026</div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary">Voir</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-tree" data-title="Arborescence complète">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="fa-solid fa-sitemap"></i>
+                <h4 class="mb-0">Arborescence complète</h4>
+            </div>
+            <div class="row g-3">
+                <div class="col-lg-7">
+                    <div class="card">
+                        <div class="card-header">Structure technique ISO 14224</div>
+                        <div class="card-body">
+                            <ul class="gmao-tree" id="gmao-tree"></ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="card gmao-detail-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <div id="tree-detail-title" class="fw-bold">Sélectionnez un élément</div>
+                                <span id="tree-detail-level" class="badge bg-primary">Niveau</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-primary btn-sm" data-tree-action="edit"><i class="fa-solid fa-edit"></i> Modifier</button>
+                                <button class="btn btn-outline-success btn-sm" data-tree-action="add"><i class="fa-solid fa-plus"></i> Ajouter un sous-niveau</button>
+                                <button class="btn btn-outline-danger btn-sm" data-tree-action="delete"><i class="fa-solid fa-trash"></i> Supprimer</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <dl id="tree-detail-list" class="row mb-0">
+                                <dt class="col-sm-5">Information</dt>
+                                <dd class="col-sm-7 text-muted">Cliquez sur un nœud pour voir les détails.</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-reports" data-title="Rapports & Statistiques">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-chart-bar"></i>
+                    <h4 class="mb-0">Rapports &amp; Statistiques</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Tableau de bord &gt; Rapports &amp; Statistiques</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-sites" data-title="Sites / Usines">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-industry"></i>
+                <h4 class="mb-0">Sites / Usines</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sites / Usines</nav>
+            <div class="gmao-crud" data-entity="sites">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un site" data-search="sites" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="sites"><i class="fa-solid fa-plus"></i> Ajouter un site</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code site</th>
+                                <th>Nom du site</th>
+                                <th>Localisation</th>
+                                <th>Responsable</th>
+                                <th>Nb départements</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-sites"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-departments" data-title="Départements / Zones">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-th-large"></i>
+                <h4 class="mb-0">Départements / Zones</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Départements / Zones</nav>
+            <div class="gmao-crud" data-entity="departments">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un département" data-search="departments" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="departments"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="departments"><i class="fa-solid fa-plus"></i> Ajouter un département</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom département</th>
+                                <th>Site parent</th>
+                                <th>Chef</th>
+                                <th>Nb ateliers</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-departments"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-workshops" data-title="Ateliers / Bâtiments">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-warehouse"></i>
+                <h4 class="mb-0">Ateliers / Bâtiments</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Ateliers / Bâtiments</nav>
+            <div class="gmao-crud" data-entity="workshops">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un atelier" data-search="workshops" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="workshops"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="workshops"><i class="fa-solid fa-plus"></i> Ajouter un atelier</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom atelier</th>
+                                <th>Département</th>
+                                <th>Responsable</th>
+                                <th>Surface</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-workshops"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-lines" data-title="Lignes / Systèmes">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-project-diagram"></i>
+                <h4 class="mb-0">Lignes / Systèmes</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Lignes / Systèmes</nav>
+            <div class="gmao-crud" data-entity="lines">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un système" data-search="lines" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="lines"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="lines"><i class="fa-solid fa-plus"></i> Ajouter un système</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom système</th>
+                                <th>Atelier</th>
+                                <th>Fonction</th>
+                                <th>Criticité</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-lines"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-equipment" data-title="Équipements">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-cogs"></i>
+                <h4 class="mb-0">Équipements</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Équipements</nav>
+            <div class="gmao-crud" data-entity="equipment">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un équipement" data-search="equipment" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="equipment"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="equipment"><i class="fa-solid fa-plus"></i> Ajouter un équipement</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>TAG</th>
+                                <th>Désignation</th>
+                                <th>Famille</th>
+                                <th>Fabricant</th>
+                                <th>Criticité</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-equipment"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-subassembly" data-title="Sous-ensembles">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-puzzle-piece"></i>
+                <h4 class="mb-0">Sous-ensembles</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sous-ensembles</nav>
+            <div class="gmao-crud" data-entity="subassemblies">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un sous-ensemble" data-search="subassemblies" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="subassemblies"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="subassemblies"><i class="fa-solid fa-plus"></i> Ajouter un sous-ensemble</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom sous-ensemble</th>
+                                <th>Équipement parent</th>
+                                <th>Remplaçable en bloc</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-subassemblies"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-organs" data-title="Organes / Modules">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-microchip"></i>
+                <h4 class="mb-0">Organes / Modules</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Organes / Modules</nav>
+            <div class="gmao-crud" data-entity="organs">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un organe" data-search="organs" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="organs"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="organs"><i class="fa-solid fa-plus"></i> Ajouter un organe</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom organe</th>
+                                <th>Sous-ensemble parent</th>
+                                <th>Paramètres nominaux</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-organs"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-components" data-title="Composants">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-circle"></i>
+                <h4 class="mb-0">Composants</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Composants</nav>
+            <div class="gmao-crud" data-entity="components">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un composant" data-search="components" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="components"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="components"><i class="fa-solid fa-plus"></i> Ajouter un composant</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom composant</th>
+                                <th>Organe parent</th>
+                                <th>Matière</th>
+                                <th>Dimensions</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-components"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-spare-parts" data-title="Pièces de rechange">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-box-open"></i>
+                <h4 class="mb-0">Pièces de rechange</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Pièces de rechange</nav>
+            <div class="gmao-crud" data-entity="spareParts">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher une pièce" data-search="spareParts" />
+                        </div>
+                        <select class="form-select form-select-sm" data-filter="spareParts"></select>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="spareParts"><i class="fa-solid fa-plus"></i> Ajouter une pièce</button>
+                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Réf. interne</th>
+                                <th>Désignation</th>
+                                <th>Composant</th>
+                                <th>Fournisseur</th>
+                                <th>Prix unitaire</th>
+                                <th>Stock actuel</th>
+                                <th>Stock mini</th>
+                                <th>Statut stock</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-spareParts"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-workorders" data-title="Ordres de travail">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <h4 class="mb-0">Ordres de travail (OT)</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Maintenance &gt; Ordres de travail</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-planning" data-title="Planning préventif">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-calendar-alt"></i>
+                    <h4 class="mb-0">Planning préventif</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Maintenance &gt; Planning préventif</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-history" data-title="Historique interventions">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-history"></i>
+                    <h4 class="mb-0">Historique interventions</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Maintenance &gt; Historique interventions</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-failures" data-title="Pannes & défaillances">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <h4 class="mb-0">Pannes &amp; défaillances</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Maintenance &gt; Pannes &amp; défaillances</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-technicians" data-title="Techniciens & équipes">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-users"></i>
+                    <h4 class="mb-0">Techniciens &amp; équipes</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Ressources &gt; Techniciens &amp; équipes</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-suppliers" data-title="Fournisseurs">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-truck"></i>
+                    <h4 class="mb-0">Fournisseurs</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Ressources &gt; Fournisseurs</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-stock" data-title="Stock pièces">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-boxes"></i>
+                    <h4 class="mb-0">Stock pièces</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Ressources &gt; Stock pièces</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-contracts" data-title="Contrats de maintenance">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-file-contract"></i>
+                    <h4 class="mb-0">Contrats de maintenance</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Ressources &gt; Contrats de maintenance</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-company" data-title="Mon entreprise">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-building"></i>
+                <h4 class="mb-0">Mon entreprise</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Administration &gt; Mon entreprise</nav>
+            <div class="card gmao-detail-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold" id="company-name">@companyName</div>
+                        <span class="badge bg-primary" id="company-code">@companyCode</span>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" data-action="edit" data-entity="company" data-id="company-1">
+                        <i class="fa-solid fa-edit"></i> Modifier les informations
+                    </button>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0" id="company-details">
+                        <dt class="col-sm-4">Adresse</dt>
+                        <dd class="col-sm-8">Wilaya d'Alger, Daïra Bab El Oued, Commune Bab El Oued</dd>
+                        <dt class="col-sm-4">Date de création</dt>
+                        <dd class="col-sm-8">12/01/1998</dd>
+                        <dt class="col-sm-4">Téléphone</dt>
+                        <dd class="col-sm-8">+213 21 00 00 00</dd>
+                        <dt class="col-sm-4">Nombre de sites</dt>
+                        <dd class="col-sm-8" id="company-sites-count">0</dd>
+                    </dl>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-users" data-title="Utilisateurs & rôles">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <h4 class="mb-0">Utilisateurs &amp; rôles</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Administration &gt; Utilisateurs &amp; rôles</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-settings" data-title="Paramètres système">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-cog"></i>
+                    <h4 class="mb-0">Paramètres système</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Administration &gt; Paramètres système</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal fade" id="crud-form-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crud-form-title"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="crud-form-body"></div>
+                <div class="modal-footer">
+                    <div class="text-danger small me-auto" id="crud-form-error"></div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="crud-form-submit">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="crud-detail-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crud-detail-title"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="crud-detail-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="crud-delete-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="crud-delete-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" id="crud-delete-confirm">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/algeria-geo.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+</body>
+</html>

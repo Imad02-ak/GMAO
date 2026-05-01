@@ -1,0 +1,408 @@
+﻿@page
+@model GMAO.Pages.Auth.RegisterModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Créer un compte";
+}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - GMAO Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/auth.css" asp-append-version="true" />
+</head>
+<body class="auth-body">
+    <div class="auth-card">
+        <section class="auth-panel-left" style="flex-basis: 38%;">
+            <div>
+                <div class="auth-logo">
+                    <div class="logo-icon">
+                        <i class="fa-solid fa-gear"></i>
+                    </div>
+                    <h1>GMAO Pro</h1>
+                    <p>Gestion de Maintenance Assistée par Ordinateur</p>
+                </div>
+
+                <div class="auth-feature">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-tools"></i>
+                    </div>
+                    <div>
+                        <h6>Gestion des équipements</h6>
+                        <p>Suivez et planifiez la maintenance de vos actifs</p>
+                    </div>
+                </div>
+                <div class="auth-feature">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                    </div>
+                    <div>
+                        <h6>Ordres de travail</h6>
+                        <p>Créez et assignez des tâches en temps réel</p>
+                    </div>
+                </div>
+                <div class="auth-feature">
+                    <div class="auth-feature-icon">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h6>Tableaux de bord</h6>
+                        <p>Analysez les performances de votre maintenance</p>
+                    </div>
+                </div>
+            </div>
+            <p class="auth-tagline">Optimisez votre maintenance, maximisez vos performances.</p>
+        </section>
+
+        <section class="auth-panel-right scrollable" style="flex-basis: 62%;">
+            <div class="auth-logo-mobile">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <h1>GMAO Pro</h1>
+                <p>Gestion de Maintenance Assistée par Ordinateur</p>
+            </div>
+            <div class="mb-4">
+                <h2 class="auth-panel-title">Créer un compte</h2>
+                <p class="auth-panel-subtitle">Rejoignez votre équipe de maintenance</p>
+            </div>
+
+            <form method="post" class="needs-validation" novalidate>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" asp-for="Input.FirstName"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                            <input asp-for="Input.FirstName" class="form-control" placeholder="Prénom" />
+                        </div>
+                        <span class="text-danger small" asp-validation-for="Input.FirstName"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" asp-for="Input.LastName"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                            <input asp-for="Input.LastName" class="form-control" placeholder="Nom de famille" />
+                        </div>
+                        <span class="text-danger small" asp-validation-for="Input.LastName"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" asp-for="Input.BirthDate"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-calendar"></i></span>
+                            <input asp-for="Input.BirthDate" class="form-control" type="date" />
+                        </div>
+                        <span class="text-danger small" asp-validation-for="Input.BirthDate"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" asp-for="Input.Email"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                            <input asp-for="Input.Email" class="form-control" placeholder="Adresse e-mail" />
+                        </div>
+                        <span class="text-danger small" asp-validation-for="Input.Email"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" asp-for="Input.Password"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                            <input asp-for="Input.Password" class="form-control" placeholder="Mot de passe" />
+                        </div>
+                        <div class="password-strength mt-2">
+                            <div class="strength-bar" id="passwordStrength"></div>
+                        </div>
+                        <span class="text-danger small" asp-validation-for="Input.Password"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" asp-for="Input.ConfirmPassword"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-lock-open"></i></span>
+                            <input asp-for="Input.ConfirmPassword" class="form-control" placeholder="Confirmer le mot de passe" />
+                        </div>
+                        <span class="text-danger small" asp-validation-for="Input.ConfirmPassword"></span>
+                    </div>
+                </div>
+
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" asp-for="Input.CreateNewCompany" id="createCompanyToggle" />
+                    <label class="form-check-label" for="createCompanyToggle">
+                        ✓ Créer une nouvelle entreprise
+                    </label>
+                    <div class="form-text text-muted">Décochez si vous rejoignez une entreprise existante</div>
+                </div>
+
+                <div class="mt-3" id="companyCodeSection">
+                    <label class="form-label" asp-for="Input.CompanyCode"></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa-solid fa-key"></i></span>
+                        <input asp-for="Input.CompanyCode" class="form-control" placeholder="Entrez le code de votre entreprise" />
+                    </div>
+                    <span class="text-danger small" asp-validation-for="Input.CompanyCode"></span>
+                    <div class="form-text text-muted mt-2">ⓘ Votre inscription sera soumise à l'approbation du modérateur de l'entreprise.</div>
+                </div>
+
+                <div class="company-section" id="companyInfoSection">
+                    <h5>Informations de l'entreprise</h5>
+                    <div class="auth-divider"></div>
+                    <div class="row g-4 align-items-stretch company-grid">
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Input.CompanyName"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-industry"></i></span>
+                                <input asp-for="Input.CompanyName" class="form-control" placeholder="Raison sociale" />
+                            </div>
+                            <span class="text-danger small" asp-validation-for="Input.CompanyName"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Input.Wilaya"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-location-dot"></i></span>
+                                <select asp-for="Input.Wilaya" class="form-select" data-selected="@Model.Input.Wilaya">
+                                    <option value="">Sélectionner une wilaya</option>
+                                </select>
+                            </div>
+                            <span class="text-danger small" asp-validation-for="Input.Wilaya"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Input.Daira"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
+                                <select asp-for="Input.Daira" class="form-select" data-selected="@Model.Input.Daira">
+                                    <option value="">Sélectionner une daïra</option>
+                                </select>
+                            </div>
+                            <span class="text-danger small" asp-validation-for="Input.Daira"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Input.Commune"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-location-dot"></i></span>
+                                <select asp-for="Input.Commune" class="form-select" data-selected="@Model.Input.Commune">
+                                    <option value="">Sélectionner une commune</option>
+                                </select>
+                            </div>
+                            <span class="text-danger small" asp-validation-for="Input.Commune"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Input.CompanyCreationDate"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-calendar-alt"></i></span>
+                                <input asp-for="Input.CompanyCreationDate" class="form-control" type="date" />
+                            </div>
+                            <span class="text-danger small" asp-validation-for="Input.CompanyCreationDate"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Input.PhoneNumber"></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                <input asp-for="Input.PhoneNumber" class="form-control" placeholder="+213 XX XX XX XX" />
+                            </div>
+                            <span class="text-danger small" asp-validation-for="Input.PhoneNumber"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mt-4">
+                    <i class="fa-solid fa-user-plus me-2"></i>Créer mon compte
+                </button>
+
+                <div class="text-center mt-3">
+                    <span class="text-muted">Déjà inscrit ?</span>
+                    <a class="link-muted" asp-page="/Auth/Login">Se connecter</a>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    @if (Model.ShowCompanyCreated)
+    {
+        <div class="toast-container position-fixed bottom-0 end-0 p-4">
+            <div class="toast align-items-center text-bg-light border-0" id="companyToast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="12000">
+                <div class="toast-header">
+                    <i class="fa-solid fa-check-circle text-success me-2"></i>
+                    <strong class="me-auto">Bienvenue, @Model.Input.FirstName !</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fermer"></button>
+                </div>
+                <div class="toast-body">
+                    <p class="mb-2">Votre entreprise a été créée avec succès.</p>
+                    <p class="mb-2">Votre code entreprise est :</p>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="badge text-bg-primary" id="companyCodeDisplay">@Model.CompanyCode</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="copyCompanyCode">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                    </div>
+                    <p class="mb-3">Conservez ce code précieusement pour inviter vos collaborateurs.</p>
+                    <a class="btn btn-primary w-100" asp-page="/Index">Accéder à mon tableau de bord</a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/algeria-geo.js" asp-append-version="true"></script>
+    <script>
+        const createCompanyToggle = document.getElementById("createCompanyToggle");
+        const companyInfoSection = document.getElementById("companyInfoSection");
+        const companyCodeSection = document.getElementById("companyCodeSection");
+        const passwordInput = document.getElementById("Input_Password");
+        const strengthBar = document.getElementById("passwordStrength");
+        const wilayaSelect = document.getElementById("Input_Wilaya");
+        const dairaSelect = document.getElementById("Input_Daira");
+        const communeSelect = document.getElementById("Input_Commune");
+
+        const updateCompanyMode = () => {
+            const isCreating = createCompanyToggle?.checked;
+            companyInfoSection?.classList.toggle("show", isCreating);
+            if (companyCodeSection) {
+                companyCodeSection.style.display = isCreating ? "none" : "block";
+            }
+        };
+
+        const createOption = (value, label) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = label;
+            return option;
+        };
+
+        const resetSelect = (select, placeholder) => {
+            if (!select) {
+                return;
+            }
+
+            select.innerHTML = "";
+            select.appendChild(createOption("", placeholder));
+        };
+
+        const populateWilayas = () => {
+            if (!wilayaSelect || typeof ALGERIA_GEO === "undefined") {
+                return;
+            }
+
+            resetSelect(wilayaSelect, "Sélectionner une wilaya");
+            ALGERIA_GEO.forEach((wilaya) => {
+                wilayaSelect.appendChild(createOption(wilaya.name, `${wilaya.code} - ${wilaya.name}`));
+            });
+
+            const selectedWilaya = wilayaSelect.dataset.selected;
+            if (selectedWilaya) {
+                wilayaSelect.value = selectedWilaya;
+            }
+        };
+
+        const updateCommunes = (useSelected) => {
+            if (!communeSelect || !dairaSelect || typeof ALGERIA_GEO === "undefined") {
+                return;
+            }
+
+            const wilayaData = ALGERIA_GEO.find((wilaya) => wilaya.name === wilayaSelect?.value);
+            const dairaData = wilayaData?.dairas.find((daira) => daira.name === dairaSelect.value);
+
+            resetSelect(communeSelect, "Sélectionner une commune");
+            if (!dairaData) {
+                return;
+            }
+
+            dairaData.communes.forEach((commune) => {
+                communeSelect.appendChild(createOption(commune, commune));
+            });
+
+            const selectedCommune = useSelected ? communeSelect.dataset.selected : "";
+            if (selectedCommune) {
+                communeSelect.value = selectedCommune;
+            }
+        };
+
+        const updateDairas = (useSelected) => {
+            if (!dairaSelect || !wilayaSelect || typeof ALGERIA_GEO === "undefined") {
+                return;
+            }
+
+            const wilayaData = ALGERIA_GEO.find((wilaya) => wilaya.name === wilayaSelect.value);
+
+            resetSelect(dairaSelect, "Sélectionner une daïra");
+            resetSelect(communeSelect, "Sélectionner une commune");
+
+            if (!wilayaData) {
+                return;
+            }
+
+            wilayaData.dairas.forEach((daira) => {
+                dairaSelect.appendChild(createOption(daira.name, daira.name));
+            });
+
+            const selectedDaira = useSelected ? dairaSelect.dataset.selected : "";
+            if (selectedDaira) {
+                dairaSelect.value = selectedDaira;
+            }
+
+            updateCommunes(useSelected);
+        };
+
+        const initializeGeoSelects = () => {
+            if (!wilayaSelect || !dairaSelect || !communeSelect || typeof ALGERIA_GEO === "undefined") {
+                return;
+            }
+
+            populateWilayas();
+            updateDairas(true);
+        };
+
+        const updatePasswordStrength = () => {
+            if (!strengthBar || !passwordInput) {
+                return;
+            }
+
+            const value = passwordInput.value;
+            let score = 0;
+            if (value.length >= 8) score += 1;
+            if (/[A-Z]/.test(value)) score += 1;
+            if (/[0-9]/.test(value)) score += 1;
+            if (/[^A-Za-z0-9]/.test(value)) score += 1;
+
+            const percentage = (score / 4) * 100;
+            strengthBar.style.width = `${percentage}%`;
+            if (score <= 1) {
+                strengthBar.style.background = "#dc3545";
+            } else if (score === 2) {
+                strengthBar.style.background = "#ffc107";
+            } else if (score === 3) {
+                strengthBar.style.background = "#20c997";
+            } else {
+                strengthBar.style.background = "#198754";
+            }
+        };
+
+        createCompanyToggle?.addEventListener("change", updateCompanyMode);
+        passwordInput?.addEventListener("input", updatePasswordStrength);
+        wilayaSelect?.addEventListener("change", () => updateDairas(false));
+        dairaSelect?.addEventListener("change", () => updateCommunes(false));
+
+        updateCompanyMode();
+        updatePasswordStrength();
+        initializeGeoSelects();
+
+        const companyToast = document.getElementById("companyToast");
+        if (companyToast) {
+            const toast = new bootstrap.Toast(companyToast);
+            toast.show();
+        }
+
+        const copyButton = document.getElementById("copyCompanyCode");
+        copyButton?.addEventListener("click", () => {
+            const codeText = document.getElementById("companyCodeDisplay")?.textContent?.trim() || "";
+            if (codeText) {
+                navigator.clipboard.writeText(codeText);
+            }
+        });
+    </script>
+</body>
+</html>
