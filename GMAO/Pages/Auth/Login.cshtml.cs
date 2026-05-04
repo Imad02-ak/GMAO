@@ -39,9 +39,11 @@ public class LoginModel : PageModel
 
         var displayName = Input.Email.Split('@', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "Utilisateur";
         var firstName = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? displayName;
-        var companyName = string.Equals(Input.CompanyCode, "4@gml", StringComparison.OrdinalIgnoreCase)
-            ? "Entreprise Nationale Sonatrach"
-            : $"Entreprise {Input.CompanyCode}";
+        var companyName = RegisterModel.CompanyRegistry.TryGetValue(Input.CompanyCode, out var registeredCompany)
+            ? registeredCompany
+            : string.Equals(Input.CompanyCode, "4@gml", StringComparison.OrdinalIgnoreCase)
+                ? "Entreprise Nationale Sonatrach"
+                : Input.CompanyCode;
 
         var claims = new List<Claim>
         {

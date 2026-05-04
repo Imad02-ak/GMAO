@@ -1,4 +1,4 @@
-const viewSections = document.querySelectorAll(".gmao-view");
+﻿const viewSections = document.querySelectorAll(".gmao-view");
 const navLinks = document.querySelectorAll(".gmao-nav-link");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
@@ -20,13 +20,23 @@ const bootstrapAvailable = typeof bootstrap !== "undefined";
 const crudFormModal = crudFormModalElement && bootstrapAvailable ? new bootstrap.Modal(crudFormModalElement) : null;
 const crudDetailModal = crudDetailModalElement && bootstrapAvailable ? new bootstrap.Modal(crudDetailModalElement) : null;
 const crudDeleteModal = crudDeleteModalElement && bootstrapAvailable ? new bootstrap.Modal(crudDeleteModalElement) : null;
+const orgFormModals = {};
+const orgDetailModals = {};
+const orgDeleteModals = {};
 let chartsInitialized = false;
 let countersStarted = false;
 let selectedTreeNode = null;
 let activeFormContext = null;
 let pendingDelete = null;
+let orgFormContext = null;
+let pendingOrgDelete = null;
 
 const createId = () => `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+let unitesPrincipales = [];
+let divisions = [];
+let departements = [];
+let services = [];
 
 const company = {
     id: "company-1",
@@ -247,7 +257,7 @@ let equipment = [
         acquisitionValue: 1200000,
         currentValue: 950000,
         lifetimeValue: 12,
-        lifetimeUnit: "ann�es",
+        lifetimeUnit: "années",
         warrantyDate: "2026-03-12",
         counterHours: 15200,
         counterCycles: 4300,
@@ -278,8 +288,8 @@ let organs = [
         subassemblyId: "sub-1",
         code: "ORG-77",
         name: "Organe lubrification",
-        nominalParameters: "D�bit: 150 L/min, Pression: 200 bar",
-        alarmThresholds: "T� max: 85�C",
+        nominalParameters: "Débit: 150 L/min, Pression: 200 bar",
+        alarmThresholds: "T° max: 85°C",
         description: "Bloc lubrification"
     }
 ];
@@ -291,7 +301,7 @@ let components = [
         code: "CMP-88",
         name: "Composant pompe",
         material: "Acier inoxydable 316L",
-        dimensions: "�25mm",
+        dimensions: "Ø25mm",
         description: "Pompe interne"
     }
 ];
@@ -323,24 +333,24 @@ const entityConfigs = {
             { name: "name", label: "Nom de l'entreprise", icon: "fa-building", type: "text", required: true },
             { name: "code", label: "Code entreprise", icon: "fa-hashtag", type: "text", required: true, uppercase: true },
             { name: "wilaya", label: "Wilaya", icon: "fa-map-marker-alt", type: "geo-wilaya", required: true },
-            { name: "daira", label: "Da�ra", icon: "fa-map-marker-alt", type: "geo-daira", required: true },
+            { name: "daira", label: "Daïra", icon: "fa-map-marker-alt", type: "geo-daira", required: true },
             { name: "commune", label: "Commune", icon: "fa-map-marker-alt", type: "geo-commune", required: true },
             { name: "createdAt", label: "Date de cr\u00e9ation", icon: "fa-calendar", type: "date", required: true },
-            { name: "phone", label: "Num�ro de t�l�phone", icon: "fa-phone", type: "text", required: true }
+            { name: "phone", label: "Numéro de téléphone", icon: "fa-phone", type: "text", required: true }
         ]
     },
     sites: {
         key: "sites",
         name: "Site",
-        viewId: "view-sites",
+        viewId: "view-unites",
         codeField: "code",
         fields: [
             { name: "code", label: "Code site unique", icon: "fa-hashtag", type: "text", required: true, uppercase: true, unique: true },
             { name: "name", label: "Nom du site", icon: "fa-industry", type: "text", required: true },
             { name: "wilaya", label: "Wilaya", icon: "fa-map-marker-alt", type: "geo-wilaya", required: true },
-            { name: "daira", label: "Da�ra", icon: "fa-map-marker-alt", type: "geo-daira", required: true },
+            { name: "daira", label: "Daïra", icon: "fa-map-marker-alt", type: "geo-daira", required: true },
             { name: "commune", label: "Commune", icon: "fa-map-marker-alt", type: "geo-commune", required: true },
-            { name: "address", label: "Adresse compl�te", icon: "fa-map-pin", type: "textarea", required: false },
+            { name: "address", label: "Adresse complète", icon: "fa-map-pin", type: "textarea", required: false },
             { name: "manager", label: "Responsable de site", icon: "fa-user-tie", type: "text", required: true },
             { name: "email", label: "Email responsable", icon: "fa-envelope", type: "email", required: false },
             { name: "phone", label: "T\u00e9l\u00e9phone site", icon: "fa-phone", type: "text", required: false },
@@ -350,7 +360,7 @@ const entityConfigs = {
     departments: {
         key: "departments",
         name: "D\u00e9partement",
-        viewId: "view-departments",
+        viewId: "view-divisions",
         codeField: "code",
         parentKey: "siteId",
         parentEntity: "sites",
@@ -367,7 +377,7 @@ const entityConfigs = {
     workshops: {
         key: "workshops",
         name: "Atelier",
-        viewId: "view-workshops",
+        viewId: "view-departements",
         codeField: "code",
         parentKey: "departmentId",
         parentEntity: "departments",
@@ -375,7 +385,7 @@ const entityConfigs = {
             { name: "departmentId", label: "D\u00e9partement parent", icon: "fa-th-large", type: "parent", required: true },
             { name: "code", label: "Code atelier", icon: "fa-hashtag", type: "text", required: true, uppercase: true, unique: true },
             { name: "name", label: "Nom de l'atelier", icon: "fa-warehouse", type: "text", required: true },
-            { name: "surface", label: "Surface (m�)", icon: "fa-ruler-combined", type: "number", required: true, min: 0 },
+            { name: "surface", label: "Surface (m²)", icon: "fa-ruler-combined", type: "number", required: true, min: 0 },
             { name: "manager", label: "Responsable atelier", icon: "fa-user-tie", type: "text", required: true },
             { name: "email", label: "Email responsable", icon: "fa-envelope", type: "email", required: false },
             { name: "phone", label: "T\u00e9l\u00e9phone", icon: "fa-phone", type: "text", required: false },
@@ -385,7 +395,7 @@ const entityConfigs = {
     lines: {
         key: "lines",
         name: "Syst\u00e8me",
-        viewId: "view-lines",
+        viewId: "view-services",
         codeField: "code",
         parentKey: "workshopId",
         parentEntity: "workshops",
@@ -412,7 +422,7 @@ const entityConfigs = {
     equipment: {
         key: "equipment",
         name: "\u00c9quipement",
-        viewId: "view-equipment",
+        viewId: "view-equipements",
         codeField: "tag",
         parentKey: "lineId",
         parentEntity: "lines",
@@ -435,9 +445,9 @@ const entityConfigs = {
                         type: "radio",
                         required: true,
                         options: [
-                            { value: "A", label: "A � Critique", className: "gmao-badge-critical" },
-                            { value: "B", label: "B � Important", className: "gmao-badge-important" },
-                            { value: "C", label: "C � Standard", className: "gmao-badge-standard" }
+                            { value: "A", label: "A — Critique", className: "gmao-badge-critical" },
+                            { value: "B", label: "B — Important", className: "gmao-badge-important" },
+                            { value: "C", label: "C — Standard", className: "gmao-badge-standard" }
                         ]
                     }
                 ]
@@ -472,7 +482,7 @@ const entityConfigs = {
                     { name: "counterHours", label: "Compteur heures de marche", icon: "fa-clock", type: "number", required: false },
                     { name: "counterCycles", label: "Compteur cycles", icon: "fa-sync", type: "number", required: false },
                     { name: "counterDistance", label: "Compteur km / distance", icon: "fa-road", type: "number", required: false },
-                    { name: "counterUnit", label: "Unit� personnalis�e", icon: "fa-ruler", type: "text", required: false },
+                    { name: "counterUnit", label: "Unité personnalisée", icon: "fa-ruler", type: "text", required: false },
                     { name: "counterAlert", label: "Valeur seuil alerte", icon: "fa-bell", type: "number", required: false }
                 ]
             },
@@ -480,8 +490,8 @@ const entityConfigs = {
                 id: "documents",
                 label: "Documents & Photos",
                 fields: [
-                    { name: "photos", label: "Photos de l'�quipement", icon: "fa-camera", type: "file", required: false, accept: "image/*", multiple: true },
-                    { name: "documents", label: "Documents attach�s", icon: "fa-file-pdf", type: "file", required: false, accept: ".pdf,.doc,.docx,.xls", multiple: true },
+                    { name: "photos", label: "Photos de l'équipement", icon: "fa-camera", type: "file", required: false, accept: "image/*", multiple: true },
+                    { name: "documents", label: "Documents attachés", icon: "fa-file-pdf", type: "file", required: false, accept: ".pdf,.doc,.docx,.xls", multiple: true },
                     { name: "notes", label: "Notes / Remarques", icon: "fa-sticky-note", type: "textarea", required: false }
                 ]
             }
@@ -490,12 +500,12 @@ const entityConfigs = {
     subassemblies: {
         key: "subassemblies",
         name: "Sous-ensemble",
-        viewId: "view-subassembly",
+        viewId: "view-groupes-equip",
         codeField: "code",
         parentKey: "equipmentId",
         parentEntity: "equipment",
         fields: [
-            { name: "equipmentId", label: "�quipement parent", icon: "fa-cog", type: "parent", required: true },
+            { name: "equipmentId", label: "Équipement parent", icon: "fa-cog", type: "parent", required: true },
             { name: "code", label: "Code sous-ensemble", icon: "fa-hashtag", type: "text", required: true, uppercase: true, unique: true },
             { name: "name", label: "Nom du sous-ensemble", icon: "fa-puzzle-piece", type: "text", required: true },
             { name: "functionMain", label: "Fonction associ\u00e9e", icon: "fa-align-left", type: "textarea", required: true },
@@ -506,7 +516,7 @@ const entityConfigs = {
     organs: {
         key: "organs",
         name: "Organe",
-        viewId: "view-organs",
+        viewId: "view-familles-equip",
         codeField: "code",
         parentKey: "subassemblyId",
         parentEntity: "subassemblies",
@@ -522,7 +532,7 @@ const entityConfigs = {
     components: {
         key: "components",
         name: "Composant",
-        viewId: "view-components",
+        viewId: "view-sousfamilles-equip",
         codeField: "code",
         parentKey: "organId",
         parentEntity: "organs",
@@ -572,6 +582,89 @@ const entityData = {
     spareParts: () => spareParts
 };
 
+const orgConfigs = {
+    unites: {
+        key: "unites",
+        label: "Unité principale",
+        plural: "Unités principales",
+        prefix: "UNI-",
+        createTitle: "Nouvelle Unité Principale",
+        editTitle: "Modifier l'Unité",
+        viewId: "view-unites",
+        tableId: "table-unites",
+        formId: "form-unites",
+        modalId: "modal-unites-form",
+        titleId: "modal-unites-title",
+        detailModalId: "modal-unites-detail",
+        detailBodyId: "detail-unites-body",
+        deleteModalId: "modal-unites-delete",
+        deleteBodyId: "delete-unites-body",
+        parentKey: null,
+        parentLevel: null,
+        childLevel: "divisions"
+    },
+    divisions: {
+        key: "divisions",
+        label: "Division",
+        plural: "Divisions",
+        prefix: "DIV-",
+        createTitle: "Nouvelle Division",
+        editTitle: "Modifier la Division",
+        viewId: "view-divisions",
+        tableId: "table-divisions",
+        formId: "form-divisions",
+        modalId: "modal-divisions-form",
+        titleId: "modal-divisions-title",
+        detailModalId: "modal-divisions-detail",
+        detailBodyId: "detail-divisions-body",
+        deleteModalId: "modal-divisions-delete",
+        deleteBodyId: "delete-divisions-body",
+        parentKey: "uniteId",
+        parentLevel: "unites",
+        childLevel: "departements"
+    },
+    departements: {
+        key: "departements",
+        label: "Département",
+        plural: "Départements",
+        prefix: "DEP-",
+        createTitle: "Nouveau Département",
+        editTitle: "Modifier le Département",
+        viewId: "view-departements",
+        tableId: "table-departements",
+        formId: "form-departements",
+        modalId: "modal-departements-form",
+        titleId: "modal-departements-title",
+        detailModalId: "modal-departements-detail",
+        detailBodyId: "detail-departements-body",
+        deleteModalId: "modal-departements-delete",
+        deleteBodyId: "delete-departements-body",
+        parentKey: "divisionId",
+        parentLevel: "divisions",
+        childLevel: "services"
+    },
+    services: {
+        key: "services",
+        label: "Service / Atelier",
+        plural: "Services / Ateliers",
+        prefix: "SRV-",
+        createTitle: "Nouveau Service / Atelier",
+        editTitle: "Modifier le Service",
+        viewId: "view-services",
+        tableId: "table-services",
+        formId: "form-services",
+        modalId: "modal-services-form",
+        titleId: "modal-services-title",
+        detailModalId: "modal-services-detail",
+        detailBodyId: "detail-services-body",
+        deleteModalId: "modal-services-delete",
+        deleteBodyId: "delete-services-body",
+        parentKey: "departementId",
+        parentLevel: "departements",
+        childLevel: null
+    }
+};
+
 const setEntityData = (key, data) => {
     switch (key) {
         case "sites":
@@ -617,6 +710,43 @@ const tableState = {
     components: { search: "", filter: "" },
     spareParts: { search: "", filter: "" }
 };
+
+const orgDataMap = {
+    unites: () => unitesPrincipales,
+    divisions: () => divisions,
+    departements: () => departements,
+    services: () => services
+};
+
+const setOrgData = (level, data) => {
+    switch (level) {
+        case "unites":
+            unitesPrincipales = data;
+            break;
+        case "divisions":
+            divisions = data;
+            break;
+        case "departements":
+            departements = data;
+            break;
+        case "services":
+            services = data;
+            break;
+        default:
+            break;
+    }
+};
+
+const orgFilters = {
+    unites: { search: "", parentId: "", parentName: "" },
+    divisions: { search: "", parentId: "", parentName: "" },
+    departements: { search: "", parentId: "", parentName: "" },
+    services: { search: "", parentId: "", parentName: "" }
+};
+
+const getOrgConfig = (level) => orgConfigs[level];
+
+const getOrgItems = (level) => orgDataMap[level]();
 
 const getEntityConfig = (key) => entityConfigs[key];
 
@@ -880,6 +1010,7 @@ const renderAllTables = () => {
         renderTable(key);
     });
     updateCompanyInfo();
+    renderOrgTables();
 };
 
 const applyUppercase = (input) => {
@@ -937,6 +1068,501 @@ const populateGeoSelects = (form, initialData = {}) => {
     if (initialData.commune) {
         communeSelect.value = initialData.commune;
     }
+};
+
+const initOrgModals = () => {
+    if (!bootstrapAvailable) {
+        return;
+    }
+
+    Object.values(orgConfigs).forEach((config) => {
+        const formModalElement = document.getElementById(config.modalId);
+        const detailModalElement = document.getElementById(config.detailModalId);
+        const deleteModalElement = document.getElementById(config.deleteModalId);
+
+        if (formModalElement) {
+            orgFormModals[config.key] = new bootstrap.Modal(formModalElement);
+        }
+        if (detailModalElement) {
+            orgDetailModals[config.key] = new bootstrap.Modal(detailModalElement);
+        }
+        if (deleteModalElement) {
+            orgDeleteModals[config.key] = new bootstrap.Modal(deleteModalElement);
+        }
+    });
+};
+
+const generateOrgCode = (prefix, items) => {
+    const index = items.length + 1;
+    return `${prefix}${index.toString().padStart(4, "0")}`;
+};
+
+const getOrgParentOptions = (level) => {
+    const config = getOrgConfig(level);
+    if (!config?.parentLevel) {
+        return [];
+    }
+
+    return getOrgItems(config.parentLevel).map((item) => ({
+        id: item.id,
+        label: item.nom
+    }));
+};
+
+const getOrgParentItem = (level, parentId) => {
+    const config = getOrgConfig(level);
+    if (!config?.parentLevel) {
+        return null;
+    }
+
+    return getOrgItems(config.parentLevel).find((item) => item.id === parentId) ?? null;
+};
+
+const renderOrgActions = (level, id) => {
+    return `
+        <div class="gmao-action-btns d-flex gap-1">
+            <button class="btn btn-outline-secondary btn-sm" data-org-action="detail" data-level="${level}" data-id="${id}"><i class="fa-solid fa-eye"></i></button>
+            <button class="btn btn-outline-primary btn-sm" data-org-action="edit" data-level="${level}" data-id="${id}"><i class="fa-solid fa-edit"></i></button>
+            <button class="btn btn-outline-danger btn-sm" data-org-action="delete" data-level="${level}" data-id="${id}"><i class="fa-solid fa-trash"></i></button>
+        </div>`;
+};
+
+const renderOrgFilterBadge = (level) => {
+    const badgeContainer = document.querySelector(`[data-filter-badge="${level}"]`);
+    if (!badgeContainer) {
+        return;
+    }
+
+    const filter = orgFilters[level];
+    if (!filter?.parentId) {
+        badgeContainer.innerHTML = "";
+        return;
+    }
+
+    badgeContainer.innerHTML = `
+        <div class="filter-badge">
+            Filtré par: ${filter.parentName}
+            <button type="button" class="btn btn-sm" data-org-action="clear-filter" data-level="${level}">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>`;
+};
+
+const renderOrgTable = (level) => {
+    const config = getOrgConfig(level);
+    const tableBody = document.getElementById(config.tableId);
+    if (!tableBody) {
+        return;
+    }
+
+    const filter = orgFilters[level];
+    let items = [...getOrgItems(level)];
+
+    if (filter?.parentId && config.parentKey) {
+        items = items.filter((item) => item[config.parentKey] === filter.parentId);
+    }
+
+    if (filter?.search) {
+        const searchValue = filter.search.toLowerCase();
+        items = items.filter((item) =>
+            item.code.toLowerCase().includes(searchValue) ||
+            item.nom.toLowerCase().includes(searchValue));
+    }
+
+    const rows = items.map((item) => {
+        switch (level) {
+            case "unites":
+                return `
+                    <tr>
+                        <td>${item.code}</td>
+                        <td>${item.nom}</td>
+                        <td>${item.wilaya}</td>
+                        <td>${item.directeur}</td>
+                        <td>${item.telephone}</td>
+                        <td>${renderOrgActions(level, item.id)}</td>
+                    </tr>`;
+            case "divisions":
+                return `
+                    <tr>
+                        <td>${item.code}</td>
+                        <td>${item.nom}</td>
+                        <td>${item.uniteName ?? ""}</td>
+                        <td>${item.wilaya}</td>
+                        <td>${item.responsable}</td>
+                        <td>${renderOrgActions(level, item.id)}</td>
+                    </tr>`;
+            case "departements":
+                return `
+                    <tr>
+                        <td>${item.code}</td>
+                        <td>${item.nom}</td>
+                        <td>${item.divisionName ?? ""}</td>
+                        <td>${item.wilaya}</td>
+                        <td>${item.chef}</td>
+                        <td>${renderOrgActions(level, item.id)}</td>
+                    </tr>`;
+            case "services":
+                return `
+                    <tr>
+                        <td>${item.code}</td>
+                        <td>${item.nom}</td>
+                        <td>${item.departementName ?? ""}</td>
+                        <td>${item.batiment ?? ""}</td>
+                        <td>${item.chef}</td>
+                        <td>${renderOrgActions(level, item.id)}</td>
+                    </tr>`;
+            default:
+                return "";
+        }
+    }).join("");
+
+    tableBody.innerHTML = rows;
+    renderOrgFilterBadge(level);
+};
+
+const renderOrgTables = () => {
+    Object.keys(orgConfigs).forEach((level) => renderOrgTable(level));
+};
+
+const updateLocationInfo = (form, level, parentItem) => {
+    const info = form.querySelector(`[data-location-info="${level}"]`);
+    if (!info) {
+        return;
+    }
+
+    if (!parentItem) {
+        info.classList.add("d-none");
+        info.textContent = "";
+        return;
+    }
+
+    info.textContent = `? Localisation héritée de ${parentItem.nom} — modifiable`;
+    info.classList.remove("d-none");
+};
+
+const applyParentLocation = (form, level, parentItem) => {
+    if (!parentItem) {
+        updateLocationInfo(form, level, null);
+        return;
+    }
+
+    const wilayaSelect = form.querySelector("select[data-geo='wilaya']");
+    const dairaSelect = form.querySelector("select[data-geo='daira']");
+    const communeSelect = form.querySelector("select[data-geo='commune']");
+
+    if (!wilayaSelect || !dairaSelect || !communeSelect) {
+        return;
+    }
+
+    wilayaSelect.value = parentItem.wilaya ?? "";
+    wilayaSelect.dispatchEvent(new Event("change"));
+    dairaSelect.value = parentItem.daira ?? "";
+    dairaSelect.dispatchEvent(new Event("change"));
+    communeSelect.value = parentItem.commune ?? "";
+
+    updateLocationInfo(form, level, parentItem);
+};
+
+const fillParentSelect = (level, form, selectedId) => {
+    const parentSelect = form.querySelector("[data-parent-select]");
+    if (!parentSelect) {
+        return;
+    }
+
+    const options = getOrgParentOptions(level);
+    parentSelect.innerHTML = "<option value=\"\">Sélectionner</option>" +
+        options.map((option) => `<option value="${option.id}">${option.label}</option>`).join("");
+
+    if (selectedId) {
+        parentSelect.value = selectedId;
+    }
+};
+
+const openOrgForm = (level, mode, itemId, parentId) => {
+    const config = getOrgConfig(level);
+    const form = document.getElementById(config.formId);
+    const modalTitle = document.getElementById(config.titleId);
+    if (!form || !modalTitle) {
+        return;
+    }
+
+    form.reset();
+    form.classList.remove("was-validated");
+    const items = getOrgItems(level);
+    const existingItem = itemId ? items.find((item) => item.id === itemId) : null;
+    const codeInput = form.querySelector("[data-field='code']");
+
+    if (codeInput) {
+        codeInput.value = mode === "create" ? generateOrgCode(config.prefix, items) : existingItem?.code ?? "";
+    }
+
+    form.querySelectorAll("[data-field]").forEach((input) => {
+        const field = input.dataset.field;
+        if (field === "code") {
+            return;
+        }
+        const value = existingItem?.[field] ?? "";
+        if (input.tagName === "SELECT") {
+            input.value = value;
+        } else {
+            input.value = value;
+        }
+    });
+
+    fillParentSelect(level, form, existingItem?.[config.parentKey] ?? parentId);
+    populateGeoSelects(form, existingItem ?? {});
+
+    if (config.parentKey) {
+        const parentSelect = form.querySelector("[data-parent-select]");
+        const parentItem = getOrgParentItem(level, parentSelect?.value);
+        if (mode === "create" && parentItem) {
+            applyParentLocation(form, level, parentItem);
+        } else {
+            updateLocationInfo(form, level, null);
+        }
+    }
+
+    orgFormContext = { level, mode, itemId };
+    modalTitle.textContent = mode === "create" ? config.createTitle : config.editTitle;
+    orgFormModals[level]?.show();
+};
+
+const readOrgFormValues = (level) => {
+    const config = getOrgConfig(level);
+    const form = document.getElementById(config.formId);
+    if (!form) {
+        return null;
+    }
+
+    if (!form.checkValidity()) {
+        form.classList.add("was-validated");
+        return null;
+    }
+
+    const values = {};
+    form.querySelectorAll("[data-field]").forEach((input) => {
+        const field = input.dataset.field;
+        values[field] = input.value;
+    });
+
+    return values;
+};
+
+const saveOrgForm = (level) => {
+    const values = readOrgFormValues(level);
+    if (!values) {
+        return;
+    }
+
+    const config = getOrgConfig(level);
+    const items = [...getOrgItems(level)];
+    const isEdit = orgFormContext?.mode === "edit";
+    const parentItem = config.parentKey ? getOrgParentItem(level, values[config.parentKey]) : null;
+
+    if (config.parentKey) {
+        if (level === "divisions") {
+            values.uniteName = parentItem?.nom ?? "";
+        }
+        if (level === "departements") {
+            values.divisionName = parentItem?.nom ?? "";
+        }
+        if (level === "services") {
+            values.departementName = parentItem?.nom ?? "";
+        }
+    }
+
+    if (isEdit && orgFormContext?.itemId) {
+        const index = items.findIndex((item) => item.id === orgFormContext.itemId);
+        if (index >= 0) {
+            items[index] = { ...items[index], ...values };
+        }
+    } else {
+        items.push({
+            id: createId(),
+            ...values,
+            createdAt: new Date().toISOString()
+        });
+    }
+
+    setOrgData(level, items);
+    renderOrgTable(level);
+    orgFormModals[level]?.hide();
+};
+
+const buildParentChain = (level, item) => {
+    const chain = [];
+    let currentLevel = level;
+    let currentItem = item;
+
+    while (currentLevel) {
+        const config = getOrgConfig(currentLevel);
+        if (currentItem?.nom) {
+            chain.unshift(currentItem.nom);
+        }
+        if (!config?.parentLevel || !config.parentKey) {
+            break;
+        }
+        currentItem = getOrgParentItem(currentLevel, currentItem[config.parentKey]);
+        currentLevel = config.parentLevel;
+    }
+
+    return chain.join(" > ");
+};
+
+const buildDetailFields = (level, item) => {
+    const fields = [];
+    if (level === "unites") {
+        fields.push(
+            ["Wilaya", item.wilaya],
+            ["Daïra", item.daira],
+            ["Commune", item.commune],
+            ["Adresse", item.adresse],
+            ["Directeur", item.directeur],
+            ["Téléphone", item.telephone],
+            ["Email", item.email],
+            ["Description", item.description]
+        );
+    }
+    if (level === "divisions") {
+        fields.push(
+            ["Unité", item.uniteName],
+            ["Wilaya", item.wilaya],
+            ["Daïra", item.daira],
+            ["Commune", item.commune],
+            ["Adresse", item.adresse],
+            ["Responsable", item.responsable],
+            ["Téléphone", item.telephone],
+            ["Email", item.email],
+            ["Description", item.description]
+        );
+    }
+    if (level === "departements") {
+        fields.push(
+            ["Division", item.divisionName],
+            ["Wilaya", item.wilaya],
+            ["Daïra", item.daira],
+            ["Commune", item.commune],
+            ["Adresse", item.adresse],
+            ["Chef", item.chef],
+            ["Téléphone", item.telephone],
+            ["Email", item.email],
+            ["Description", item.description]
+        );
+    }
+    if (level === "services") {
+        fields.push(
+            ["Département", item.departementName],
+            ["Wilaya", item.wilaya],
+            ["Daïra", item.daira],
+            ["Commune", item.commune],
+            ["Bâtiment", item.batiment],
+            ["Adresse", item.adresse],
+            ["Chef", item.chef],
+            ["Téléphone", item.telephone],
+            ["Email", item.email],
+            ["Description", item.description]
+        );
+    }
+
+    return fields
+        .filter(([_, value]) => value !== undefined)
+        .map(([label, value]) => `
+            <div class="col-md-6">
+                <div class="text-muted small">${label}</div>
+                <div class="fw-semibold">${value || "-"}</div>
+            </div>`)
+        .join("");
+};
+
+const openOrgDetail = (level, itemId) => {
+    const config = getOrgConfig(level);
+    const detailBody = document.getElementById(config.detailBodyId);
+    const modalElement = document.getElementById(config.detailModalId);
+    if (!detailBody || !modalElement) {
+        return;
+    }
+
+    const item = getOrgItems(level).find((entry) => entry.id === itemId);
+    if (!item) {
+        return;
+    }
+
+    modalElement.dataset.itemId = itemId;
+    const parentChain = buildParentChain(level, item);
+    const childLevel = config.childLevel;
+    let childrenSection = "";
+
+    if (childLevel) {
+        const childConfig = getOrgConfig(childLevel);
+        const children = getOrgItems(childLevel).filter((entry) => entry[childConfig.parentKey] === item.id);
+        const childrenList = children.map((child) => `<li>${child.code} - ${child.nom}</li>`).join("") || "Aucun.";
+        childrenSection = `
+            <div class="mt-4">
+                <div class="fw-semibold mb-2">Sous-niveaux (${children.length})</div>
+                <ul class="mb-3">${childrenList}</ul>
+                <button class="btn btn-outline-primary btn-sm" data-org-action="view-children" data-level="${childLevel}" data-parent-id="${item.id}" data-parent-name="${item.nom}">Voir les ${childConfig.plural.toLowerCase()}</button>
+            </div>`;
+    }
+
+    detailBody.innerHTML = `
+        <div class="mb-3">
+            <span class="badge bg-primary me-2">${item.code}</span>
+            <span class="fw-bold fs-5">${item.nom}</span>
+            <span class="badge bg-secondary ms-2">${config.label}</span>
+        </div>
+        <div class="detail-parent-chain">Parent : ${parentChain}</div>
+        <div class="row g-3 mt-2">
+            ${buildDetailFields(level, item)}
+        </div>
+        ${childrenSection}`;
+
+    orgDetailModals[level]?.show();
+};
+
+const openOrgDelete = (level, itemId) => {
+    const config = getOrgConfig(level);
+    const body = document.getElementById(config.deleteBodyId);
+    if (!body) {
+        return;
+    }
+
+    const item = getOrgItems(level).find((entry) => entry.id === itemId);
+    if (!item) {
+        return;
+    }
+
+    pendingOrgDelete = { level, itemId };
+    body.innerHTML = `Êtes-vous sûr de vouloir supprimer <strong>${item.nom}</strong> ?<br/>Attention : tous les sous-niveaux associés seront également supprimés.`;
+    orgDeleteModals[level]?.show();
+};
+
+const cascadeOrgDelete = (level, itemId) => {
+    const config = getOrgConfig(level);
+    const items = getOrgItems(level).filter((entry) => entry.id !== itemId);
+    setOrgData(level, items);
+
+    if (config.childLevel) {
+        const childConfig = getOrgConfig(config.childLevel);
+        const childItems = getOrgItems(config.childLevel)
+            .filter((entry) => entry[childConfig.parentKey] !== itemId);
+        const removedChildren = getOrgItems(config.childLevel)
+            .filter((entry) => entry[childConfig.parentKey] === itemId)
+            .map((entry) => entry.id);
+
+        setOrgData(config.childLevel, childItems);
+        removedChildren.forEach((childId) => cascadeOrgDelete(config.childLevel, childId));
+    }
+};
+
+const confirmOrgDelete = (level) => {
+    if (!pendingOrgDelete || pendingOrgDelete.level !== level) {
+        return;
+    }
+
+    cascadeOrgDelete(level, pendingOrgDelete.itemId);
+    pendingOrgDelete = null;
+    renderOrgTables();
+    orgDeleteModals[level]?.hide();
 };
 
 const renderField = (field, value, entityKey) => {
@@ -1176,8 +1802,6 @@ const attachFormHandlers = (entityKey, item) => {
             });
         });
     });
-
-
 };
 
 const configHasGeo = (entityKey) => {
@@ -1388,7 +2012,7 @@ const renderEquipmentDetail = (item) => {
     const subassemblyList = subassemblies
         .filter((sub) => sub.equipmentId === item.id)
         .map((sub) => `<li>${sub.code} - ${sub.name}</li>`)
-        .join("");
+        .join(", ");
 
     return `
         <ul class="nav nav-tabs" role="tablist">${tabs}</ul>
@@ -1860,6 +2484,35 @@ document.querySelectorAll("[data-search]").forEach((input) => {
     });
 });
 
+document.querySelectorAll("[data-org-search]").forEach((input) => {
+    input.addEventListener("input", () => {
+        const level = input.dataset.orgSearch;
+        if (!level || !orgFilters[level]) {
+            return;
+        }
+
+        orgFilters[level].search = input.value;
+        renderOrgTable(level);
+    });
+});
+
+document.querySelectorAll("[data-parent-select]").forEach((select) => {
+    select.addEventListener("change", () => {
+        const level = select.dataset.parentSelect;
+        if (!level) {
+            return;
+        }
+
+        const form = select.closest("form");
+        if (!form) {
+            return;
+        }
+
+        const parentItem = getOrgParentItem(level, select.value);
+        applyParentLocation(form, level, parentItem);
+    });
+});
+
 document.querySelectorAll("[data-filter]").forEach((select) => {
     select.addEventListener("change", () => {
         const entityKey = select.dataset.filter;
@@ -1908,6 +2561,84 @@ document.addEventListener("click", (event) => {
             filterSelect.value = itemId;
         }
         renderTable(childEntity);
+    }
+});
+
+document.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-org-action]");
+    if (!target) {
+        return;
+    }
+
+    const action = target.dataset.orgAction;
+    const level = target.dataset.level;
+    if (!action || !level) {
+        return;
+    }
+
+    if (action === "create") {
+        const parentId = orgFilters[level]?.parentId || "";
+        openOrgForm(level, "create", null, parentId || null);
+    }
+
+    if (action === "edit") {
+        const itemId = target.dataset.id;
+        if (itemId) {
+            openOrgForm(level, "edit", itemId);
+        }
+    }
+
+    if (action === "detail") {
+        const itemId = target.dataset.id;
+        if (itemId) {
+            openOrgDetail(level, itemId);
+        }
+    }
+
+    if (action === "delete") {
+        const itemId = target.dataset.id;
+        if (itemId) {
+            openOrgDelete(level, itemId);
+        }
+    }
+
+    if (action === "save") {
+        saveOrgForm(level);
+    }
+
+    if (action === "confirm-delete") {
+        confirmOrgDelete(level);
+    }
+
+    if (action === "detail-edit" || action === "detail-delete") {
+        const config = getOrgConfig(level);
+        const modalElement = document.getElementById(config.detailModalId);
+        const itemId = modalElement?.dataset.itemId;
+        if (itemId && action === "detail-edit") {
+            orgDetailModals[level]?.hide();
+            openOrgForm(level, "edit", itemId);
+        }
+        if (itemId && action === "detail-delete") {
+            orgDetailModals[level]?.hide();
+            openOrgDelete(level, itemId);
+        }
+    }
+
+    if (action === "view-children") {
+        const parentId = target.dataset.parentId;
+        const parentName = target.dataset.parentName ?? "";
+        if (parentId) {
+            orgFilters[level].parentId = parentId;
+            orgFilters[level].parentName = parentName;
+            renderOrgTable(level);
+            navigateTo(getOrgConfig(level).viewId);
+        }
+    }
+
+    if (action === "clear-filter") {
+        orgFilters[level].parentId = "";
+        orgFilters[level].parentName = "";
+        renderOrgTable(level);
     }
 });
 
@@ -1993,4 +2724,5 @@ applyDate();
 updateSidebarState();
 initBootstrap();
 initNavigation();
+initOrgModals();
 renderAllTables();

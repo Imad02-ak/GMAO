@@ -5,7 +5,7 @@
     var companyName = ViewData["CompanyName"]?.ToString() ?? "Entreprise Nationale Sonatrach";
     var companyCode = ViewData["CompanyCode"]?.ToString() ?? "4@gml";
     var userName = ViewData["UserName"]?.ToString() ?? "Ahmed Bensaid";
-    var userFirstName = ViewData["UserFirstName"]?.ToString() ?? "Ahmed";
+    var userPrenom = ViewData["UserPrenom"]?.ToString() ?? "Ahmed";
     var userInitials = ViewData["UserInitials"]?.ToString() ?? "AB";
 }
 <!DOCTYPE html>
@@ -17,6 +17,22 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+    <style>
+        .dropdown-toggle-no-arrow::after {
+            display: none !important;
+        }
+
+        .nav-icon-btn {
+            background: transparent;
+            border: none;
+            padding: 0.35rem 0.5rem;
+            border-radius: 0.5rem;
+        }
+
+        .nav-icon-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
 </head>
 <body class="gmao-body">
     <nav class="gmao-navbar d-flex align-items-center justify-content-between">
@@ -38,20 +54,13 @@
             </div>
         </div>
         <div class="d-flex align-items-center gap-3">
-            <button class="btn btn-link text-white position-relative" data-bs-toggle="tooltip" data-bs-title="Notifications">
-                <i class="fa-regular fa-bell"></i>
+            <button class="nav-icon-btn text-white position-relative" data-bs-toggle="tooltip" data-bs-title="Notifications">
+                <i class="fa-solid fa-bell" style="font-size: 18px;"></i>
                 <span class="badge bg-danger gmao-badge">4</span>
             </button>
-            <button class="btn btn-link text-white" data-bs-toggle="tooltip" data-bs-title="Messages">
-                <i class="fa-regular fa-envelope"></i>
-            </button>
-            <button class="btn btn-link text-white" data-bs-toggle="tooltip" data-bs-title="Aide">
-                <i class="fa-regular fa-circle-question"></i>
-            </button>
             <div class="dropdown">
-                <button class="btn btn-link text-white dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="gmao-avatar">@userInitials</span>
-                    <span class="d-none d-lg-inline">@userName</span>
+                <button class="btn nav-icon-btn text-white dropdown-toggle-no-arrow" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-circle-user" style="font-size: 22px; color: white;"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="#"><i class="fa-regular fa-user-circle me-2"></i>Mon profil</a></li>
@@ -67,13 +76,9 @@
 
     <aside id="gmao-sidebar" class="gmao-sidebar">
         <div class="gmao-sidebar-header">
-            <div>
-                <div class="gmao-company-name">@companyName</div>
-                <span class="badge rounded-pill gmao-company-code">@companyCode</span>
-            </div>
-            <div class="d-flex align-items-center gap-2 mt-3">
-                <span class="gmao-user-mini">@userInitials</span>
-                <div class="gmao-user-name">@userName</div>
+            <div class="sidebar-company">
+                <div class="company-name fw-bold text-white fs-6">@companyName</div>
+                <span class="company-code-badge" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 2px 8px; font-size: 11px; letter-spacing: 1px; font-weight: 600;">@companyCode</span>
             </div>
         </div>
 
@@ -86,15 +91,27 @@
         <div class="gmao-sidebar-section">
             <div class="sidebar-section-title">Arborescence technique</div>
             <a class="nav-link gmao-nav-link" data-view="view-tree" href="#view-tree"><i class="fa-solid fa-sitemap"></i><span class="sidebar-label">Arborescence complète</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-sites" href="#view-sites"><i class="fa-solid fa-industry"></i><span class="sidebar-label">Sites / Usines</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-departments" href="#view-departments"><i class="fa-solid fa-th-large"></i><span class="sidebar-label">Départements / Zones</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-workshops" href="#view-workshops"><i class="fa-solid fa-warehouse"></i><span class="sidebar-label">Ateliers / Bâtiments</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-lines" href="#view-lines"><i class="fa-solid fa-project-diagram"></i><span class="sidebar-label">Lignes / Systèmes</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-equipment" href="#view-equipment"><i class="fa-solid fa-cogs"></i><span class="sidebar-label">Équipements</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-subassembly" href="#view-subassembly"><i class="fa-solid fa-puzzle-piece"></i><span class="sidebar-label">Sous-ensembles</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-organs" href="#view-organs"><i class="fa-solid fa-microchip"></i><span class="sidebar-label">Organes / Modules</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-components" href="#view-components"><i class="fa-solid fa-circle"></i><span class="sidebar-label">Composants</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-spare-parts" href="#view-spare-parts"><i class="fa-solid fa-box-open"></i><span class="sidebar-label">Pièces de rechange</span></a>
+            <div class="sidebar-label" style="font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; padding: 8px 16px 4px;">── ORGANISATIONNEL ──</div>
+            <a class="nav-link gmao-nav-link" data-view="view-entreprise" href="#view-entreprise"><i class="fa-solid fa-building-columns"></i><span class="sidebar-label">Entreprise</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-unites" href="#view-unites"><i class="fa-solid fa-industry"></i><span class="sidebar-label">Unités principales</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-divisions" href="#view-divisions"><i class="fa-solid fa-th-large"></i><span class="sidebar-label">Divisions</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-departements" href="#view-departements"><i class="fa-solid fa-warehouse"></i><span class="sidebar-label">Départements</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-services" href="#view-services"><i class="fa-solid fa-project-diagram"></i><span class="sidebar-label">Services / Ateliers</span></a>
+            <div class="sidebar-label" style="font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; padding: 8px 16px 4px;">── ÉQUIPEMENTS ──</div>
+            <a class="nav-link gmao-nav-link" data-view="view-groupes-equip" href="#view-groupes-equip"><i class="fa-solid fa-puzzle-piece"></i><span class="sidebar-label">Groupes Équipements</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-familles-equip" href="#view-familles-equip"><i class="fa-solid fa-microchip"></i><span class="sidebar-label">Familles Équipements</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-sousfamilles-equip" href="#view-sousfamilles-equip"><i class="fa-solid fa-circle"></i><span class="sidebar-label">Sous-familles Équipements</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-equipements" href="#view-equipements"><i class="fa-solid fa-cogs"></i><span class="sidebar-label">Équipements</span></a>
+            <div class="sidebar-label" style="font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; padding: 8px 16px 4px;">── ORGANES ──</div>
+            <a class="nav-link gmao-nav-link" data-view="view-groupes-organes" href="#view-groupes-organes"><i class="fa-solid fa-layer-group text-purple"></i><span class="sidebar-label">Groupes Organes</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-familles-organes" href="#view-familles-organes"><i class="fa-solid fa-folder text-purple"></i><span class="sidebar-label">Familles Organes</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-sousfamilles-organes" href="#view-sousfamilles-organes"><i class="fa-solid fa-folder-open text-purple"></i><span class="sidebar-label">Sous-familles Organes</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-organes" href="#view-organes"><i class="fa-solid fa-puzzle-piece text-purple"></i><span class="sidebar-label">Organes</span></a>
+            <div class="sidebar-label" style="font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; padding: 8px 16px 4px;">── ARTICLES ──</div>
+            <a class="nav-link gmao-nav-link" data-view="view-groupes-articles" href="#view-groupes-articles"><i class="fa-solid fa-layer-group text-success"></i><span class="sidebar-label">Groupes Articles</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-familles-articles" href="#view-familles-articles"><i class="fa-solid fa-folder text-success"></i><span class="sidebar-label">Familles Articles</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-sousfamilles-articles" href="#view-sousfamilles-articles"><i class="fa-solid fa-folder-open text-success"></i><span class="sidebar-label">Sous-familles Articles</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-articles" href="#view-articles"><i class="fa-solid fa-box-open text-success"></i><span class="sidebar-label">Articles</span></a>
         </div>
 
         <div class="gmao-sidebar-section">
@@ -125,7 +142,7 @@
         <section class="gmao-view active" id="view-dashboard" data-title="Tableau de bord">
             <div class="gmao-welcome">
                 <div>
-                    <h2>Bonjour, @userFirstName 👋</h2>
+                    <h2>Bonjour, @userPrenom 👋</h2>
                     <div class="gmao-date" id="current-date"></div>
                     <p>Vous avez 12 ordres de travail en attente aujourd'hui.</p>
                 </div>
@@ -338,6 +355,21 @@
             </div>
         </section>
 
+        <section class="gmao-view" id="view-entreprise" data-title="Entreprise">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <h4 class="mb-0">Entreprise</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Entreprise</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
         <section class="gmao-view" id="view-tree" data-title="Arborescence complète">
             <div class="d-flex align-items-center gap-2 mb-3">
                 <i class="fa-solid fa-sitemap"></i>
@@ -376,6 +408,126 @@
             </div>
         </section>
 
+        <section class="gmao-view" id="view-groupes-organes" data-title="Groupes Organes">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-layer-group text-purple"></i>
+                    <h4 class="mb-0">Groupes Organes</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Groupes Organes</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-familles-organes" data-title="Familles Organes">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-folder text-purple"></i>
+                    <h4 class="mb-0">Familles Organes</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Familles Organes</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-sousfamilles-organes" data-title="Sous-familles Organes">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-folder-open text-purple"></i>
+                    <h4 class="mb-0">Sous-familles Organes</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Sous-familles Organes</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-organes" data-title="Organes">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-puzzle-piece text-purple"></i>
+                    <h4 class="mb-0">Organes</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Organes</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-groupes-articles" data-title="Groupes Articles">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-layer-group text-success"></i>
+                    <h4 class="mb-0">Groupes Articles</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Groupes Articles</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-familles-articles" data-title="Familles Articles">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-folder text-success"></i>
+                    <h4 class="mb-0">Familles Articles</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Familles Articles</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-sousfamilles-articles" data-title="Sous-familles Articles">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-folder-open text-success"></i>
+                    <h4 class="mb-0">Sous-familles Articles</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Sous-familles Articles</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-articles" data-title="Articles">
+            <div class="gmao-placeholder">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="fa-solid fa-box-open text-success"></i>
+                    <h4 class="mb-0">Articles</h4>
+                </div>
+                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Articles</nav>
+                <div class="card text-center p-4">
+                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
+                    <h5>Module en cours de développement</h5>
+                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                </div>
+            </div>
+        </section>
+
         <section class="gmao-view" id="view-reports" data-title="Rapports & Statistiques">
             <div class="gmao-placeholder">
                 <div class="d-flex align-items-center gap-2 mb-2">
@@ -391,158 +543,155 @@
             </div>
         </section>
 
-        <section class="gmao-view" id="view-sites" data-title="Sites / Usines">
+        <section class="gmao-view" id="view-unites" data-title="Unités principales">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-industry"></i>
-                <h4 class="mb-0">Sites / Usines</h4>
+                <h4 class="mb-0">Unités principales</h4>
             </div>
-            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sites / Usines</nav>
-            <div class="gmao-crud" data-entity="sites">
+            <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Unités principales</nav>
+            <div class="gmao-crud">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
-                            <input class="form-control" type="search" placeholder="Rechercher un site" data-search="sites" />
+                            <input class="form-control" type="search" placeholder="Rechercher une unité" data-org-search="unites" />
                         </div>
                     </div>
                     <div class="gmao-toolbar-right">
-                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="sites"><i class="fa-solid fa-plus"></i> Ajouter un site</button>
-                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary btn-sm" data-org-action="create" data-level="unites"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </div>
                 </div>
+                <div class="filter-badge-container" data-filter-badge="unites"></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead>
                             <tr>
-                                <th>Code site</th>
-                                <th>Nom du site</th>
-                                <th>Localisation</th>
-                                <th>Responsable</th>
-                                <th>Nb départements</th>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Wilaya</th>
+                                <th>Directeur</th>
+                                <th>Téléphone</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-sites"></tbody>
+                        <tbody id="table-unites"></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
-        <section class="gmao-view" id="view-departments" data-title="Départements / Zones">
+        <section class="gmao-view" id="view-divisions" data-title="Divisions">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-th-large"></i>
-                <h4 class="mb-0">Départements / Zones</h4>
+                <h4 class="mb-0">Divisions</h4>
             </div>
-            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Départements / Zones</nav>
-            <div class="gmao-crud" data-entity="departments">
+            <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Divisions</nav>
+            <div class="gmao-crud">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
-                            <input class="form-control" type="search" placeholder="Rechercher un département" data-search="departments" />
+                            <input class="form-control" type="search" placeholder="Rechercher une division" data-org-search="divisions" />
                         </div>
-                        <select class="form-select form-select-sm" data-filter="departments"></select>
                     </div>
                     <div class="gmao-toolbar-right">
-                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="departments"><i class="fa-solid fa-plus"></i> Ajouter un département</button>
-                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary btn-sm" data-org-action="create" data-level="divisions"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </div>
                 </div>
+                <div class="filter-badge-container" data-filter-badge="divisions"></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead>
                             <tr>
                                 <th>Code</th>
-                                <th>Nom département</th>
-                                <th>Site parent</th>
-                                <th>Chef</th>
-                                <th>Nb ateliers</th>
+                                <th>Nom</th>
+                                <th>Unité parent</th>
+                                <th>Wilaya</th>
+                                <th>Responsable</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-departments"></tbody>
+                        <tbody id="table-divisions"></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
-        <section class="gmao-view" id="view-workshops" data-title="Ateliers / Bâtiments">
+        <section class="gmao-view" id="view-departements" data-title="Départements">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-warehouse"></i>
-                <h4 class="mb-0">Ateliers / Bâtiments</h4>
+                <h4 class="mb-0">Départements</h4>
             </div>
-            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Ateliers / Bâtiments</nav>
-            <div class="gmao-crud" data-entity="workshops">
+            <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Départements</nav>
+            <div class="gmao-crud">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
-                            <input class="form-control" type="search" placeholder="Rechercher un atelier" data-search="workshops" />
+                            <input class="form-control" type="search" placeholder="Rechercher un département" data-org-search="departements" />
                         </div>
-                        <select class="form-select form-select-sm" data-filter="workshops"></select>
                     </div>
                     <div class="gmao-toolbar-right">
-                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="workshops"><i class="fa-solid fa-plus"></i> Ajouter un atelier</button>
-                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary btn-sm" data-org-action="create" data-level="departements"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </div>
                 </div>
+                <div class="filter-badge-container" data-filter-badge="departements"></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead>
                             <tr>
                                 <th>Code</th>
-                                <th>Nom atelier</th>
-                                <th>Département</th>
-                                <th>Responsable</th>
-                                <th>Surface</th>
+                                <th>Nom</th>
+                                <th>Division parent</th>
+                                <th>Wilaya</th>
+                                <th>Chef</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-workshops"></tbody>
+                        <tbody id="table-departements"></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
-        <section class="gmao-view" id="view-lines" data-title="Lignes / Systèmes">
+        <section class="gmao-view" id="view-services" data-title="Services / Ateliers">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-project-diagram"></i>
-                <h4 class="mb-0">Lignes / Systèmes</h4>
+                <h4 class="mb-0">Services / Ateliers</h4>
             </div>
-            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Lignes / Systèmes</nav>
-            <div class="gmao-crud" data-entity="lines">
+            <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Services / Ateliers</nav>
+            <div class="gmao-crud">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
-                            <input class="form-control" type="search" placeholder="Rechercher un système" data-search="lines" />
+                            <input class="form-control" type="search" placeholder="Rechercher un service" data-org-search="services" />
                         </div>
-                        <select class="form-select form-select-sm" data-filter="lines"></select>
                     </div>
                     <div class="gmao-toolbar-right">
-                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="lines"><i class="fa-solid fa-plus"></i> Ajouter un système</button>
-                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary btn-sm" data-org-action="create" data-level="services"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </div>
                 </div>
+                <div class="filter-badge-container" data-filter-badge="services"></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead>
                             <tr>
                                 <th>Code</th>
-                                <th>Nom système</th>
-                                <th>Atelier</th>
-                                <th>Fonction</th>
-                                <th>Criticité</th>
+                                <th>Nom</th>
+                                <th>Département parent</th>
+                                <th>Bâtiment</th>
+                                <th>Chef</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-lines"></tbody>
+                        <tbody id="table-services"></tbody>
                     </table>
                 </div>
             </div>
         </section>
 
-        <section class="gmao-view" id="view-equipment" data-title="Équipements">
+        <section class="gmao-view" id="view-equipements" data-title="Équipements">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-cogs"></i>
                 <h4 class="mb-0">Équipements</h4>
@@ -581,12 +730,12 @@
             </div>
         </section>
 
-        <section class="gmao-view" id="view-subassembly" data-title="Sous-ensembles">
+        <section class="gmao-view" id="view-groupes-equip" data-title="Groupes Équipements">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-puzzle-piece"></i>
-                <h4 class="mb-0">Sous-ensembles</h4>
+                <h4 class="mb-0">Groupes Équipements</h4>
             </div>
-            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sous-ensembles</nav>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Groupes Équipements</nav>
             <div class="gmao-crud" data-entity="subassemblies">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
@@ -618,12 +767,12 @@
             </div>
         </section>
 
-        <section class="gmao-view" id="view-organs" data-title="Organes / Modules">
+        <section class="gmao-view" id="view-familles-equip" data-title="Familles Équipements">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-microchip"></i>
-                <h4 class="mb-0">Organes / Modules</h4>
+                <h4 class="mb-0">Familles Équipements</h4>
             </div>
-            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Organes / Modules</nav>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Familles Équipements</nav>
             <div class="gmao-crud" data-entity="organs">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
@@ -655,12 +804,12 @@
             </div>
         </section>
 
-        <section class="gmao-view" id="view-components" data-title="Composants">
+        <section class="gmao-view" id="view-sousfamilles-equip" data-title="Sous-familles Équipements">
             <div class="d-flex align-items-center gap-2 mb-2">
                 <i class="fa-solid fa-circle"></i>
-                <h4 class="mb-0">Composants</h4>
+                <h4 class="mb-0">Sous-familles Équipements</h4>
             </div>
-            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Composants</nav>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sous-familles Équipements</nav>
             <div class="gmao-crud" data-entity="components">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
@@ -915,6 +1064,586 @@
             </div>
         </section>
     </main>
+
+    <div class="modal fade" id="modal-unites-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-unites-title">Nouvelle Unité Principale</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-unites" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code unité</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom de l'unité</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-industry"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Localisation</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Wilaya</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
+                                <select class="form-select" data-geo="wilaya" data-field="wilaya" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Daïra</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
+                                <select class="form-select" data-geo="daira" data-field="daira" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Commune</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-location-arrow"></i></span>
+                                <select class="form-select" data-geo="commune" data-field="commune" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Adresse complète</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
+                                <input class="form-control" type="text" data-field="adresse">
+                            </div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Contact &amp; Responsable</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Directeur de l'unité</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-user-tie"></i></span>
+                                <input class="form-control" type="text" data-field="directeur" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Téléphone</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                <input class="form-control" type="text" data-field="telephone" pattern="[0-9+\s-]+" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un numéro valide.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                                <input class="form-control" type="email" data-field="email" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un email valide.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Informations complémentaires</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Description</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="description"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-org-action="save" data-level="unites">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-divisions-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-divisions-title">Nouvelle Division</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-divisions" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Unité principale</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-industry"></i></span>
+                                <select class="form-select" data-field="uniteId" data-parent-select="divisions" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code division</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom division</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-sitemap"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Localisation</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Wilaya</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
+                                <select class="form-select" data-geo="wilaya" data-field="wilaya" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Daïra</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
+                                <select class="form-select" data-geo="daira" data-field="daira" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Commune</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-location-arrow"></i></span>
+                                <select class="form-select" data-geo="commune" data-field="commune" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Adresse</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
+                                <input class="form-control" type="text" data-field="adresse">
+                            </div>
+                        </div>
+                        <div class="location-inherited-info d-none" data-location-info="divisions"></div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Contact &amp; Responsable</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Responsable</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-user-tie"></i></span>
+                                <input class="form-control" type="text" data-field="responsable" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Téléphone</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                <input class="form-control" type="text" data-field="telephone" pattern="[0-9+\s-]+" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un numéro valide.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                                <input class="form-control" type="email" data-field="email" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un email valide.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Informations complémentaires</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Description</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="description"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-org-action="save" data-level="divisions">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-departements-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-departements-title">Nouveau Département</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-departements" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Division parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-sitemap"></i></span>
+                                <select class="form-select" data-field="divisionId" data-parent-select="departements" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code département</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom département</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-th-large"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Localisation</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Wilaya</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
+                                <select class="form-select" data-geo="wilaya" data-field="wilaya" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Daïra</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
+                                <select class="form-select" data-geo="daira" data-field="daira" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Commune</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-location-arrow"></i></span>
+                                <select class="form-select" data-geo="commune" data-field="commune" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Adresse</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
+                                <input class="form-control" type="text" data-field="adresse">
+                            </div>
+                        </div>
+                        <div class="location-inherited-info d-none" data-location-info="departements"></div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Contact &amp; Responsable</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Chef de département</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-user-tie"></i></span>
+                                <input class="form-control" type="text" data-field="chef" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Téléphone</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                <input class="form-control" type="text" data-field="telephone" pattern="[0-9+\s-]+" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un numéro valide.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                                <input class="form-control" type="email" data-field="email" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un email valide.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Informations complémentaires</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Description</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="description"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-org-action="save" data-level="departements">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-services-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-services-title">Nouveau Service / Atelier</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-services" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Département parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-th-large"></i></span>
+                                <select class="form-select" data-field="departementId" data-parent-select="services" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code service</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom du service</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-warehouse"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Localisation physique</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Wilaya</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
+                                <select class="form-select" data-geo="wilaya" data-field="wilaya" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Daïra</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
+                                <select class="form-select" data-geo="daira" data-field="daira" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Commune</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-location-arrow"></i></span>
+                                <select class="form-select" data-geo="commune" data-field="commune" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Bâtiment / Hall</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-building"></i></span>
+                                <input class="form-control" type="text" data-field="batiment">
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Adresse détaillée</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
+                                <input class="form-control" type="text" data-field="adresse">
+                            </div>
+                        </div>
+                        <div class="location-inherited-info d-none" data-location-info="services"></div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Contact &amp; Responsable</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Chef de service</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-user-tie"></i></span>
+                                <input class="form-control" type="text" data-field="chef" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Téléphone</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                <input class="form-control" type="text" data-field="telephone" pattern="[0-9+\s-]+" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un numéro valide.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                                <input class="form-control" type="email" data-field="email" required>
+                            </div>
+                            <div class="invalid-feedback">Veuillez saisir un email valide.</div>
+                        </div>
+
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Informations complémentaires</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Description</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="description"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-org-action="save" data-level="services">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-unites-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Unité</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-unites-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" data-org-action="detail-edit" data-level="unites"><i class="fa-solid fa-edit me-2"></i>Modifier</button>
+                    <button type="button" class="btn btn-outline-danger" data-org-action="detail-delete" data-level="unites"><i class="fa-solid fa-trash me-2"></i>Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-divisions-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Division</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-divisions-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" data-org-action="detail-edit" data-level="divisions"><i class="fa-solid fa-edit me-2"></i>Modifier</button>
+                    <button type="button" class="btn btn-outline-danger" data-org-action="detail-delete" data-level="divisions"><i class="fa-solid fa-trash me-2"></i>Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-departements-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Département</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-departements-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" data-org-action="detail-edit" data-level="departements"><i class="fa-solid fa-edit me-2"></i>Modifier</button>
+                    <button type="button" class="btn btn-outline-danger" data-org-action="detail-delete" data-level="departements"><i class="fa-solid fa-trash me-2"></i>Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-services-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Service</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-services-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" data-org-action="detail-edit" data-level="services"><i class="fa-solid fa-edit me-2"></i>Modifier</button>
+                    <button type="button" class="btn btn-outline-danger" data-org-action="detail-delete" data-level="services"><i class="fa-solid fa-trash me-2"></i>Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-unites-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-unites-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-org-action="confirm-delete" data-level="unites">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-divisions-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-divisions-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-org-action="confirm-delete" data-level="divisions">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-departements-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-departements-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-org-action="confirm-delete" data-level="departements">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-services-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-services-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-org-action="confirm-delete" data-level="services">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="modal fade" id="crud-form-modal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">

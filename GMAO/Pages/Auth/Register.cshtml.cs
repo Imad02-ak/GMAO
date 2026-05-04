@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -6,6 +7,8 @@ namespace GMAO.Pages.Auth;
 
 public class RegisterModel : PageModel
 {
+    public static IDictionary<string, string> CompanyRegistry { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
@@ -48,6 +51,10 @@ public class RegisterModel : PageModel
         {
             ShowCompanyCreated = true;
             CompanyCode = GenerateCompanyCode();
+            if (!string.IsNullOrWhiteSpace(Input.CompanyName))
+            {
+                CompanyRegistry[CompanyCode] = Input.CompanyName.Trim();
+            }
         }
 
         return Page();

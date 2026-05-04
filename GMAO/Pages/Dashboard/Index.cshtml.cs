@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using GMAO.Pages.Auth;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace GMAO.Pages.Dashboard;
@@ -22,12 +23,17 @@ public class IndexModel : PageModel
             .Where(part => !string.IsNullOrWhiteSpace(part))
             .Select(part => char.ToUpperInvariant(part[0]))
             .Take(2));
-        var companyName = User.FindFirst("CompanyName")?.Value ?? "Entreprise Nationale Sonatrach";
         var companyCode = User.FindFirst("CompanyCode")?.Value ?? "4@gml";
+        var companyName = User.FindFirst("CompanyName")?.Value ?? "Entreprise Nationale Sonatrach";
+        if (RegisterModel.CompanyRegistry.TryGetValue(companyCode, out var registeredCompanyName))
+        {
+            companyName = registeredCompanyName;
+        }
 
         ViewData["Title"] = "Tableau de bord";
         ViewData["UserName"] = displayName;
         ViewData["UserFirstName"] = firstName;
+        ViewData["UserPrenom"] = firstName;
         ViewData["UserInitials"] = string.IsNullOrWhiteSpace(initials) ? "GM" : initials;
         ViewData["CompanyName"] = companyName;
         ViewData["CompanyCode"] = companyCode;

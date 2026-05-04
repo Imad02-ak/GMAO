@@ -489,6 +489,36 @@
     background: #f8f9fa;
 }
 
+.location-inherited-info {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: -0.35rem;
+    margin-bottom: 0.75rem;
+}
+
+.detail-parent-chain {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(15, 108, 191, 0.12);
+    color: #0f6cbf;
+    border: 1px solid rgba(15, 108, 191, 0.2);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.filter-badge .btn {
+    padding: 0;
+    color: inherit;
+}
+
 body.sidebar-collapsed .gmao-sidebar {
     width: var(--sidebar-collapsed-width);
 }
