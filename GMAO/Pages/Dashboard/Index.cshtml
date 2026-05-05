@@ -34,7 +34,7 @@
         }
     </style>
 </head>
-<body class="gmao-body">
+<body class="gmao-body" data-user-name="@userName" data-user-role="Responsable">
     <nav class="gmao-navbar d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-link text-white p-0" id="sidebar-toggle" aria-label="Basculer le menu">
@@ -54,10 +54,15 @@
             </div>
         </div>
         <div class="d-flex align-items-center gap-3">
-            <button class="nav-icon-btn text-white position-relative" data-bs-toggle="tooltip" data-bs-title="Notifications">
-                <i class="fa-solid fa-bell" style="font-size: 18px;"></i>
-                <span class="badge bg-danger gmao-badge">4</span>
-            </button>
+            <div class="dropdown">
+                <button class="nav-icon-btn text-white position-relative dropdown-toggle-no-arrow" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-bell" style="font-size: 18px;"></i>
+                    <span class="badge bg-danger gmao-badge" id="notification-count">0</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" id="notification-list">
+                    <li><span class="dropdown-item-text text-muted">Aucune alerte</span></li>
+                </ul>
+            </div>
             <div class="dropdown">
                 <button class="btn nav-icon-btn text-white dropdown-toggle-no-arrow" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="fa-solid fa-circle-user" style="font-size: 22px; color: white;"></i>
@@ -116,7 +121,9 @@
 
         <div class="gmao-sidebar-section">
             <div class="sidebar-section-title">Maintenance</div>
-            <a class="nav-link gmao-nav-link" data-view="view-workorders" href="#view-workorders"><i class="fa-solid fa-clipboard-list"></i><span class="sidebar-label">Ordres de travail (OT)</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-demandes" href="#view-demandes"><i class="fa-solid fa-clipboard-list text-primary"></i><span class="sidebar-label">Demandes d'intervention (DI)</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-workorders" href="#view-workorders"><i class="fa-solid fa-tools text-warning"></i><span class="sidebar-label">Ordres de travail (OT)</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-bons-travail" href="#view-bons-travail"><i class="fa-solid fa-file-alt text-info"></i><span class="sidebar-label">Bons de travail (BT)</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-planning" href="#view-planning"><i class="fa-solid fa-calendar-alt"></i><span class="sidebar-label">Planning préventif</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-history" href="#view-history"><i class="fa-solid fa-history"></i><span class="sidebar-label">Historique interventions</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-failures" href="#view-failures"><i class="fa-solid fa-exclamation-triangle"></i><span class="sidebar-label">Pannes &amp; défaillances</span></a>
@@ -355,6 +362,199 @@
             </div>
         </section>
 
+        <section class="gmao-view" id="view-demandes" data-title="Demandes d'Intervention">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-clipboard-list text-primary"></i>
+                <h4 class="mb-0">Demandes d'Intervention (DI)</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Interventions &gt; Demandes</nav>
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Total DI</div>
+                            <div class="kpi-value" id="kpi-di-total">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">En attente examen</div>
+                            <div class="kpi-value text-warning" id="kpi-di-attente">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Acceptées</div>
+                            <div class="kpi-value text-success" id="kpi-di-acceptees">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Refusées</div>
+                            <div class="kpi-value text-danger" id="kpi-di-refusees">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left d-flex flex-wrap gap-2">
+                        <button class="btn btn-primary btn-sm" data-di-action="create"><i class="fa-solid fa-plus"></i> Nouvelle Demande</button>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher par N°DI, équipement, demandeur" data-di-search />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right d-flex flex-wrap gap-2">
+                        <select class="form-select form-select-sm" data-di-filter-urgence>
+                            <option value="">Toutes urgences</option>
+                            <option value="URGENTE">Urgente</option>
+                            <option value="HAUTE">Haute</option>
+                            <option value="NORMALE">Normale</option>
+                            <option value="BASSE">Basse</option>
+                        </select>
+                        <select class="form-select form-select-sm" data-di-filter-statut>
+                            <option value="">Tous statuts</option>
+                            <option value="SOUMISE">Soumise</option>
+                            <option value="EN_EXAMEN">En examen</option>
+                            <option value="ACCEPTEE">Acceptée</option>
+                            <option value="CONVERTIE_EN_OT">Convertie</option>
+                            <option value="REFUSEE">Refusée</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>N° DI</th>
+                                <th>Titre</th>
+                                <th>Équipement</th>
+                                <th>Urgence</th>
+                                <th>Demandeur</th>
+                                <th>Date soumission</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-demandes"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-workorders" data-title="Ordres de Travail">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-tools text-warning"></i>
+                <h4 class="mb-0">Ordres de Travail</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Interventions &gt; Ordres de Travail</nav>
+            <div class="gmao-crud">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>N° OT</th>
+                                <th>Titre</th>
+                                <th>Équipement</th>
+                                <th>Priorité</th>
+                                <th>Technicien</th>
+                                <th>Statut</th>
+                                <th>Date prévue</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-workorders"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="gmao-view" id="view-bons-travail" data-title="Bons de Travail">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-file-alt text-info"></i>
+                <h4 class="mb-0">Bons de Travail (BT)</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Interventions &gt; Bons de Travail</nav>
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Total BT</div>
+                            <div class="kpi-value" id="kpi-bt-total">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">En cours</div>
+                            <div class="kpi-value text-warning" id="kpi-bt-encours">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Complétés</div>
+                            <div class="kpi-value text-success" id="kpi-bt-completes">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">En attente validation</div>
+                            <div class="kpi-value text-info" id="kpi-bt-attente">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher par N°BT, N°OT, technicien" data-bt-search />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right d-flex flex-wrap gap-2">
+                        <select class="form-select form-select-sm" data-bt-filter-statut>
+                            <option value="">Tous statuts</option>
+                            <option value="GENERE">Généré</option>
+                            <option value="REMIS">Remis</option>
+                            <option value="EN_COURS">En cours</option>
+                            <option value="COMPLETE">Complété</option>
+                            <option value="VALIDE">Validé</option>
+                        </select>
+                        <select class="form-select form-select-sm" data-bt-filter-tech></select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>N° BT</th>
+                                <th>N° OT lié</th>
+                                <th>Équipement</th>
+                                <th>Technicien</th>
+                                <th>Date prévue</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-bons-travail"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <section class="gmao-view" id="view-entreprise" data-title="Entreprise">
             <div class="gmao-placeholder">
                 <div class="d-flex align-items-center gap-2 mb-2">
@@ -409,121 +609,327 @@
         </section>
 
         <section class="gmao-view" id="view-groupes-organes" data-title="Groupes Organes">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-layer-group text-purple"></i>
-                    <h4 class="mb-0">Groupes Organes</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-layer-group text-purple"></i>
+                <h4 class="mb-0">Groupes Organes</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Groupes Organes</nav>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un groupe" data-organ-search="groupes" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-organ-action="create" data-level="groupes"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Groupes Organes</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Désignation</th>
+                                <th>Nb Familles</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-groupes-organes"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
         <section class="gmao-view" id="view-familles-organes" data-title="Familles Organes">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-folder text-purple"></i>
-                    <h4 class="mb-0">Familles Organes</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-folder text-purple"></i>
+                <h4 class="mb-0">Familles Organes</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Familles Organes</nav>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher une famille" data-organ-search="familles" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-organ-action="create" data-level="familles"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Familles Organes</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Groupe parent</th>
+                                <th>Désignation</th>
+                                <th>Nb Sous-familles</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-familles-organes"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
         <section class="gmao-view" id="view-sousfamilles-organes" data-title="Sous-familles Organes">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-folder-open text-purple"></i>
-                    <h4 class="mb-0">Sous-familles Organes</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-folder-open text-purple"></i>
+                <h4 class="mb-0">Sous-familles Organes</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sous-familles Organes</nav>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher une sous-famille" data-organ-search="sousfamilles" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-organ-action="create" data-level="sousfamilles"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Sous-familles Organes</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Famille parent</th>
+                                <th>Groupe</th>
+                                <th>Désignation</th>
+                                <th>Nb Organes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-sousfamilles-organes"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
         <section class="gmao-view" id="view-organes" data-title="Organes">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-puzzle-piece text-purple"></i>
-                    <h4 class="mb-0">Organes</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-puzzle-piece text-purple"></i>
+                <h4 class="mb-0">Organes</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Organes</nav>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un organe" data-organ-search="organes" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-organ-action="create" data-level="organes"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Organes</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="filter-badge-container" data-organ-filter-badge="organes"></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Équipement parent</th>
+                                <th>Famille</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-organes"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
         <section class="gmao-view" id="view-groupes-articles" data-title="Groupes Articles">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-layer-group text-success"></i>
-                    <h4 class="mb-0">Groupes Articles</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-layer-group text-success"></i>
+                <h4 class="mb-0">Groupes Articles</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Groupes Articles</nav>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un groupe" data-article-search="groupes" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-article-action="create" data-level="groupes"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Groupes Articles</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Désignation</th>
+                                <th>Nb Familles</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-groupes-articles"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
         <section class="gmao-view" id="view-familles-articles" data-title="Familles Articles">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-folder text-success"></i>
-                    <h4 class="mb-0">Familles Articles</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-folder text-success"></i>
+                <h4 class="mb-0">Familles Articles</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Familles Articles</nav>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher une famille" data-article-search="familles" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-article-action="create" data-level="familles"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Familles Articles</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Groupe parent</th>
+                                <th>Désignation</th>
+                                <th>Nb Sous-familles</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-familles-articles"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
         <section class="gmao-view" id="view-sousfamilles-articles" data-title="Sous-familles Articles">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-folder-open text-success"></i>
-                    <h4 class="mb-0">Sous-familles Articles</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-folder-open text-success"></i>
+                <h4 class="mb-0">Sous-familles Articles</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sous-familles Articles</nav>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher une sous-famille" data-article-search="sousfamilles" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-article-action="create" data-level="sousfamilles"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Sous-familles Articles</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Nom</th>
+                                <th>Famille parent</th>
+                                <th>Groupe</th>
+                                <th>Désignation</th>
+                                <th>Nb Articles</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-sousfamilles-articles"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
 
         <section class="gmao-view" id="view-articles" data-title="Articles">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-box-open text-success"></i>
-                    <h4 class="mb-0">Articles</h4>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="fa-solid fa-box-open text-success"></i>
+                <h4 class="mb-0">Articles</h4>
+            </div>
+            <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Articles</nav>
+            <div class="filter-badge-container" data-article-filter-badge="articles"></div>
+            <div class="row g-3 mb-3" id="article-kpi-bar">
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Total articles</div>
+                            <div class="kpi-value" id="kpi-articles-total">0</div>
+                        </div>
+                    </div>
                 </div>
-                <nav class="breadcrumb">Accueil &gt; Arborescence &gt; Articles</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">En rupture</div>
+                            <div class="kpi-value text-danger" id="kpi-articles-rupture">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Stock critique</div>
+                            <div class="kpi-value text-warning" id="kpi-articles-critique">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card gmao-kpi">
+                        <div class="card-body">
+                            <div class="kpi-label">Valeur stock (DA)</div>
+                            <div class="kpi-value text-success" id="kpi-articles-valeur">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gmao-crud">
+                <div class="gmao-toolbar">
+                    <div class="gmao-toolbar-left">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                            <input class="form-control" type="search" placeholder="Rechercher un article" data-article-search="articles" />
+                        </div>
+                    </div>
+                    <div class="gmao-toolbar-right">
+                        <button class="btn btn-primary btn-sm" data-article-action="create" data-level="articles"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Désignation</th>
+                                <th>Type</th>
+                                <th>Unité</th>
+                                <th>Stock actuel</th>
+                                <th>Stock min</th>
+                                <th>Statut stock</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-articles"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
@@ -736,18 +1142,16 @@
                 <h4 class="mb-0">Groupes Équipements</h4>
             </div>
             <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Groupes Équipements</nav>
-            <div class="gmao-crud" data-entity="subassemblies">
+            <div class="gmao-crud">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
-                            <input class="form-control" type="search" placeholder="Rechercher un sous-ensemble" data-search="subassemblies" />
+                            <input class="form-control" type="search" placeholder="Rechercher un groupe" data-equip-search="groupes" />
                         </div>
-                        <select class="form-select form-select-sm" data-filter="subassemblies"></select>
                     </div>
                     <div class="gmao-toolbar-right">
-                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="subassemblies"><i class="fa-solid fa-plus"></i> Ajouter un sous-ensemble</button>
-                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary btn-sm" data-equip-action="create" data-level="groupes"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -755,13 +1159,13 @@
                         <thead>
                             <tr>
                                 <th>Code</th>
-                                <th>Nom sous-ensemble</th>
-                                <th>Équipement parent</th>
-                                <th>Remplaçable en bloc</th>
+                                <th>Nom</th>
+                                <th>Désignation</th>
+                                <th>Nb Familles</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-subassemblies"></tbody>
+                        <tbody id="table-groupes-equip"></tbody>
                     </table>
                 </div>
             </div>
@@ -773,18 +1177,16 @@
                 <h4 class="mb-0">Familles Équipements</h4>
             </div>
             <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Familles Équipements</nav>
-            <div class="gmao-crud" data-entity="organs">
+            <div class="gmao-crud">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
-                            <input class="form-control" type="search" placeholder="Rechercher un organe" data-search="organs" />
+                            <input class="form-control" type="search" placeholder="Rechercher une famille" data-equip-search="familles" />
                         </div>
-                        <select class="form-select form-select-sm" data-filter="organs"></select>
                     </div>
                     <div class="gmao-toolbar-right">
-                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="organs"><i class="fa-solid fa-plus"></i> Ajouter un organe</button>
-                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary btn-sm" data-equip-action="create" data-level="familles"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -792,13 +1194,14 @@
                         <thead>
                             <tr>
                                 <th>Code</th>
-                                <th>Nom organe</th>
-                                <th>Sous-ensemble parent</th>
-                                <th>Paramètres nominaux</th>
+                                <th>Nom</th>
+                                <th>Groupe parent</th>
+                                <th>Désignation</th>
+                                <th>Nb Sous-familles</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-organs"></tbody>
+                        <tbody id="table-familles-equip"></tbody>
                     </table>
                 </div>
             </div>
@@ -810,18 +1213,16 @@
                 <h4 class="mb-0">Sous-familles Équipements</h4>
             </div>
             <nav class="breadcrumb">Accueil &gt; Arborescence technique &gt; Sous-familles Équipements</nav>
-            <div class="gmao-crud" data-entity="components">
+            <div class="gmao-crud">
                 <div class="gmao-toolbar">
                     <div class="gmao-toolbar-left">
                         <div class="input-group input-group-sm">
                             <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
-                            <input class="form-control" type="search" placeholder="Rechercher un composant" data-search="components" />
+                            <input class="form-control" type="search" placeholder="Rechercher une sous-famille" data-equip-search="sousfamilles" />
                         </div>
-                        <select class="form-select form-select-sm" data-filter="components"></select>
                     </div>
                     <div class="gmao-toolbar-right">
-                        <button class="btn btn-primary btn-sm" data-action="create" data-entity="components"><i class="fa-solid fa-plus"></i> Ajouter un composant</button>
-                        <button class="btn btn-outline-secondary btn-sm" disabled><i class="fa-solid fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary btn-sm" data-equip-action="create" data-level="sousfamilles"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -829,14 +1230,15 @@
                         <thead>
                             <tr>
                                 <th>Code</th>
-                                <th>Nom composant</th>
-                                <th>Organe parent</th>
-                                <th>Matière</th>
-                                <th>Dimensions</th>
+                                <th>Nom</th>
+                                <th>Famille parent</th>
+                                <th>Groupe</th>
+                                <th>Désignation</th>
+                                <th>Nb Équipements</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-components"></tbody>
+                        <tbody id="table-sousfamilles-equip"></tbody>
                     </table>
                 </div>
             </div>
@@ -879,21 +1281,6 @@
                         </thead>
                         <tbody id="table-spareParts"></tbody>
                     </table>
-                </div>
-            </div>
-        </section>
-
-        <section class="gmao-view" id="view-workorders" data-title="Ordres de travail">
-            <div class="gmao-placeholder">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                    <i class="fa-solid fa-clipboard-list"></i>
-                    <h4 class="mb-0">Ordres de travail (OT)</h4>
-                </div>
-                <nav class="breadcrumb">Accueil &gt; Maintenance &gt; Ordres de travail</nav>
-                <div class="card text-center p-4">
-                    <i class="fa-solid fa-tools fa-3x text-muted mb-3"></i>
-                    <h5>Module en cours de développement</h5>
-                    <p class="text-muted">Cette fonctionnalité sera disponible prochainement.</p>
                 </div>
             </div>
         </section>
@@ -1064,6 +1451,1521 @@
             </div>
         </section>
     </main>
+
+    <div class="modal fade" id="modal-groupes-equip-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-groupes-equip-title">Nouveau Groupe Équipements</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-groupes-equip" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code groupe</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom du groupe</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-equip-action="save" data-level="groupes">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-equip-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-familles-equip-title">Nouvelle Famille Équipements</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-familles-equip" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Groupe parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <select class="form-select" data-field="groupeId" data-equip-parent="familles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-equip-action="save" data-level="familles">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-equip-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-sousfamilles-equip-title">Nouvelle Sous-famille Équipements</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-sousfamilles-equip" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Groupe parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <select class="form-select" data-field="groupeId" data-equip-parent="sousfamilles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Famille parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                <select class="form-select" data-field="familleId" data-equip-family="sousfamilles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code sous-famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom sous-famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder-open"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-equip-action="save" data-level="sousfamilles">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-equipements-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-equipements-title">Nouvel Équipement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-equipements" class="needs-validation" novalidate>
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#equip-tab-catalogue" type="button" role="tab">Catalogue &amp; Rattachement</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#equip-tab-technique" type="button" role="tab">Informations Techniques</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#equip-tab-compteurs" type="button" role="tab">Compteurs</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#equip-tab-docs" type="button" role="tab">Documents &amp; Photos</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3">
+                            <div class="tab-pane fade show active" id="equip-tab-catalogue" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Classification catalogue</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Groupe équipement</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                        <select class="form-select" data-field="groupeId" data-equip-group="equipements" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Famille</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                        <select class="form-select" data-field="familleId" data-equip-family="equipements" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Sous-famille</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-folder-open"></i></span>
+                                        <select class="form-select" data-field="sousFamilleId" data-equip-subfamily="equipements" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement organisationnel</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Service / Atelier</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-warehouse"></i></span>
+                                        <select class="form-select" data-field="serviceId" data-equip-service="equipements" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Localisation</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
+                                        <input class="form-control" type="text" data-field="localisation" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Code équipement</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                        <input class="form-control" type="text" data-field="code" readonly>
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Nom équipement</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-cog"></i></span>
+                                        <input class="form-control" type="text" data-field="nom" required>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Marque</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+                                        <input class="form-control" type="text" data-field="marque" required>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Fournisseur</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-truck"></i></span>
+                                        <input class="form-control" type="text" data-field="fournisseur">
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">N° de série</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-fingerprint"></i></span>
+                                        <input class="form-control" type="text" data-field="numeroSerie">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="equip-tab-technique" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Informations commerciales</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Date d'achat</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-calendar"></i></span>
+                                            <input class="form-control" type="date" data-field="dateAchat">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Prix d'achat (DA)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-money-bill"></i></span>
+                                            <input class="form-control" type="number" data-field="prixAchat">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Date mise en service</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-calendar-check"></i></span>
+                                            <input class="form-control" type="date" data-field="dateMiseEnService">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Période de garantie</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-shield-alt"></i></span>
+                                            <input class="form-control" type="number" data-field="periodeGarantie">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Unité garantie</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-clock"></i></span>
+                                            <select class="form-select" data-field="periodeGarantieUnite">
+                                                <option value="Mois">Mois</option>
+                                                <option value="Années">Années</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Criticité</div>
+                                <div class="row g-3" data-criticite-group>
+                                    <div class="col-md-3">
+                                        <div class="criticite-card" data-value="1">
+                                            <div class="criticite-dot bg-danger"></div>
+                                            <div>1 - Très Haute</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="criticite-card" data-value="2">
+                                            <div class="criticite-dot bg-warning"></div>
+                                            <div>2 - Haute</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="criticite-card" data-value="3">
+                                            <div class="criticite-dot bg-info"></div>
+                                            <div>3 - Normale</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="criticite-card" data-value="4">
+                                            <div class="criticite-dot bg-success"></div>
+                                            <div>4 - Basse</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Statut actuel</div>
+                                <div class="d-flex flex-wrap gap-2" data-statut-group>
+                                    <input class="btn-check" type="radio" name="statut" id="statut-service" value="En service" checked>
+                                    <label class="btn btn-outline-success" for="statut-service">En service</label>
+                                    <input class="btn-check" type="radio" name="statut" id="statut-panne" value="En panne">
+                                    <label class="btn btn-outline-danger" for="statut-panne">En panne</label>
+                                    <input class="btn-check" type="radio" name="statut" id="statut-maintenance" value="En maintenance">
+                                    <label class="btn btn-outline-warning" for="statut-maintenance">En maintenance</label>
+                                    <input class="btn-check" type="radio" name="statut" id="statut-standby" value="En standby">
+                                    <label class="btn btn-outline-primary" for="statut-standby">En standby</label>
+                                    <input class="btn-check" type="radio" name="statut" id="statut-hs" value="Hors service">
+                                    <label class="btn btn-outline-secondary" for="statut-hs">Hors service</label>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Localisation physique</div>
+                                <div class="row g-3">
+                                    <div class="col-md-4 gmao-form-group">
+                                        <label class="form-label">Bâtiment / Hall</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-building"></i></span>
+                                            <input class="form-control" type="text" data-field="batiment">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 gmao-form-group">
+                                        <label class="form-label">Salle / Zone</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-door-open"></i></span>
+                                            <input class="form-control" type="text" data-field="salle">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 gmao-form-group">
+                                        <label class="form-label">Ligne</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-route"></i></span>
+                                            <input class="form-control" type="text" data-field="ligne">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="equip-tab-compteurs" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Compteurs de fonctionnement</div>
+                                <div class="row g-3">
+                                    <div class="col-md-3 gmao-form-group">
+                                        <label class="form-label">Heures de marche</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-clock"></i></span>
+                                            <input class="form-control" type="number" data-field="compteurHeures">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 gmao-form-group">
+                                        <label class="form-label">Nombre de cycles</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-sync"></i></span>
+                                            <input class="form-control" type="number" data-field="compteurCycles">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 gmao-form-group">
+                                        <label class="form-label">Kilomètres / Distance</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-road"></i></span>
+                                            <input class="form-control" type="number" data-field="compteurKm">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 gmao-form-group">
+                                        <label class="form-label">Seuil d'alerte</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-bell"></i></span>
+                                            <input class="form-control" type="number" data-field="seuilAlerte">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-muted small mt-2">ⓘ Les compteurs peuvent être mis à jour manuellement ou via les rapports d'intervention.</div>
+                            </div>
+                            <div class="tab-pane fade" id="equip-tab-docs" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Photo principale</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Photo de l'équipement</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-camera"></i></span>
+                                        <input class="form-control" type="file" accept="image/*" data-field="photo">
+                                    </div>
+                                    <div class="photo-preview" data-photo-preview></div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Documents attachés</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Documents</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-paperclip"></i></span>
+                                        <input class="form-control" type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx" data-field="documents">
+                                    </div>
+                                    <div class="file-list" data-file-list></div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Notes techniques</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Notes / Remarques</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-sticky-note"></i></span>
+                                        <textarea class="form-control" rows="3" data-field="notes"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-equip-action="save" data-level="equipements">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-equipements-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Équipement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-equipements-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-groupes-equip-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-groupes-equip-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-equip-action="confirm-delete" data-level="groupes">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-equip-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-familles-equip-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-equip-action="confirm-delete" data-level="familles">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-equip-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-sousfamilles-equip-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-equip-action="confirm-delete" data-level="sousfamilles">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-equipements-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-equipements-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-equip-action="confirm-delete" data-level="equipements">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-groupes-organes-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-groupes-organes-title">Nouveau Groupe Organes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-groupes-organes" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code groupe</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom du groupe</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-organ-action="save" data-level="groupes">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-organes-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-familles-organes-title">Nouvelle Famille Organes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-familles-organes" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Groupe parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <select class="form-select" data-field="groupeId" data-organ-parent="familles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-organ-action="save" data-level="familles">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-organes-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-sousfamilles-organes-title">Nouvelle Sous-famille Organes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-sousfamilles-organes" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Groupe parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <select class="form-select" data-field="groupeId" data-organ-parent="sousfamilles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Famille parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                <select class="form-select" data-field="familleId" data-organ-family="sousfamilles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code sous-famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom sous-famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder-open"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-organ-action="save" data-level="sousfamilles">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-organes-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-organes-title">Nouvel Organe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-organes" class="needs-validation" novalidate>
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#organe-tab-catalogue" type="button" role="tab">Catalogue &amp; Rattachement</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#organe-tab-technique" type="button" role="tab">Informations Techniques</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#organe-tab-docs" type="button" role="tab">Documents &amp; Notes</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3">
+                            <div class="tab-pane fade show active" id="organe-tab-catalogue" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Classification catalogue</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Groupe organe</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                        <select class="form-select" data-field="groupeId" data-organe-group="organes" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Famille</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                        <select class="form-select" data-field="familleId" data-organe-family="organes" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Sous-famille</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-folder-open"></i></span>
+                                        <select class="form-select" data-field="sousFamilleId" data-organe-subfamily="organes" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement équipement</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Équipement parent</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-cog"></i></span>
+                                        <select class="form-select" data-field="equipementId" data-organe-equipement="organes" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="equip-info-card d-none" data-equipement-info></div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Code organe</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                        <input class="form-control" type="text" data-field="code" readonly>
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Nom organe</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-puzzle-piece"></i></span>
+                                        <input class="form-control" type="text" data-field="nom" required>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Marque</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+                                        <input class="form-control" type="text" data-field="marque">
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Référence / N°</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-fingerprint"></i></span>
+                                        <input class="form-control" type="text" data-field="reference">
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Fournisseur</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-truck"></i></span>
+                                        <input class="form-control" type="text" data-field="fournisseur">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="organe-tab-technique" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Caractéristiques</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Date d'installation</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-calendar"></i></span>
+                                            <input class="form-control" type="date" data-field="dateInstallation">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Date de remplacement</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-calendar-check"></i></span>
+                                            <input class="form-control" type="date" data-field="dateRemplacement">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Durée de vie estimée</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-clock"></i></span>
+                                            <input class="form-control" type="number" data-field="dureeVie">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Unité durée de vie</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-clock"></i></span>
+                                            <select class="form-select" data-field="dureeVieUnite">
+                                                <option value="Mois">Mois</option>
+                                                <option value="Années">Années</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Prix unitaire (DA)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-money-bill"></i></span>
+                                            <input class="form-control" type="number" data-field="prixUnitaire">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Période de garantie</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-shield-alt"></i></span>
+                                            <input class="form-control" type="number" data-field="periodeGarantie">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Unité garantie</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-shield-alt"></i></span>
+                                            <select class="form-select" data-field="periodeGarantieUnite">
+                                                <option value="Mois">Mois</option>
+                                                <option value="Années">Années</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Statut actuel</div>
+                                <div class="d-flex flex-wrap gap-2" data-organe-statut-group>
+                                    <input class="btn-check" type="radio" name="statut-organe" id="organe-statut-service" value="En service" checked>
+                                    <label class="btn btn-outline-success" for="organe-statut-service">En service</label>
+                                    <input class="btn-check" type="radio" name="statut-organe" id="organe-statut-use" value="Usé">
+                                    <label class="btn btn-outline-warning" for="organe-statut-use">Usé</label>
+                                    <input class="btn-check" type="radio" name="statut-organe" id="organe-statut-attente" value="En attente remplacement">
+                                    <label class="btn btn-outline-info" for="organe-statut-attente">En attente remplacement</label>
+                                    <input class="btn-check" type="radio" name="statut-organe" id="organe-statut-remplace" value="Remplacé">
+                                    <label class="btn btn-outline-primary" for="organe-statut-remplace">Remplacé</label>
+                                    <input class="btn-check" type="radio" name="statut-organe" id="organe-statut-hs" value="Hors service">
+                                    <label class="btn btn-outline-danger" for="organe-statut-hs">Hors service</label>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Localisation sur l'équipement</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Position sur l'équipement</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
+                                        <input class="form-control" type="text" data-field="positionSurEquipement">
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Description technique</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                        <textarea class="form-control" rows="3" data-field="descriptionTechnique"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="organe-tab-docs" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Photo de l'organe</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Photo</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-camera"></i></span>
+                                        <input class="form-control" type="file" accept="image/*" data-field="photo">
+                                    </div>
+                                    <div class="photo-preview" data-organe-photo-preview></div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Documents attachés</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Documents</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-paperclip"></i></span>
+                                        <input class="form-control" type="file" multiple accept=".pdf,.doc,.docx" data-field="documents">
+                                    </div>
+                                    <div class="file-list" data-organe-file-list></div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Notes techniques</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Notes / Remarques</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-sticky-note"></i></span>
+                                        <textarea class="form-control" rows="3" data-field="notes"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-organ-action="save" data-level="organes">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-groupes-organes-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Groupe Organes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-groupes-organes-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-organes-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Famille Organes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-familles-organes-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-organes-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Sous-famille Organes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-sousfamilles-organes-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-organes-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Organe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-organes-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-groupes-organes-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-groupes-organes-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-organ-action="confirm-delete" data-level="groupes">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-organes-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-familles-organes-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-organ-action="confirm-delete" data-level="familles">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-organes-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-sousfamilles-organes-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-organ-action="confirm-delete" data-level="sousfamilles">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-organes-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-organes-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-organ-action="confirm-delete" data-level="organes">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-groupes-articles-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-groupes-articles-title">Nouveau Groupe Articles</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-groupes-articles" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code groupe</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom du groupe</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-article-action="save" data-level="groupes">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-articles-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-familles-articles-title">Nouvelle Famille Articles</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-familles-articles" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Groupe parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <select class="form-select" data-field="groupeId" data-article-parent="familles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-article-action="save" data-level="familles">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-articles-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-sousfamilles-articles-title">Nouvelle Sous-famille Articles</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-sousfamilles-articles" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Rattachement</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Groupe parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                <select class="form-select" data-field="groupeId" data-article-parent="sousfamilles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Famille parent</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                <select class="form-select" data-field="familleId" data-article-family="sousfamilles" required></select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Code sous-famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-field="code" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Nom sous-famille</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-folder-open"></i></span>
+                                <input class="form-control" type="text" data-field="nom" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Désignation</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-align-left"></i></span>
+                                <textarea class="form-control" rows="3" data-field="designation"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-article-action="save" data-level="sousfamilles">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-articles-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-articles-title">Nouvel Article</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-articles" class="needs-validation" novalidate>
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#article-tab-catalogue" type="button" role="tab">Catalogue &amp; Identification</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#article-tab-stock" type="button" role="tab">Stock &amp; Seuils</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#article-tab-organes" type="button" role="tab">Utilisation sur Organes</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#article-tab-docs" type="button" role="tab">Documents &amp; Notes</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3">
+                            <div class="tab-pane fade show active" id="article-tab-catalogue" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Classification catalogue</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Groupe article</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
+                                        <select class="form-select" data-field="groupeId" data-article-group="articles" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Famille</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
+                                        <select class="form-select" data-field="familleId" data-article-family="articles" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Sous-famille</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-folder-open"></i></span>
+                                        <select class="form-select" data-field="sousFamilleId" data-article-subfamily="articles" required></select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Code article</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                        <input class="form-control" type="text" data-field="code" readonly>
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Désignation</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-box-open"></i></span>
+                                        <input class="form-control" type="text" data-field="designation" required>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Référence interne</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+                                        <input class="form-control" type="text" data-field="referenceInterne">
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Référence fabricant</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-barcode"></i></span>
+                                        <input class="form-control" type="text" data-field="referenceFabricant">
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Marque / Fabricant</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-industry"></i></span>
+                                        <input class="form-control" type="text" data-field="marque">
+                                    </div>
+                                </div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Fournisseur</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-truck"></i></span>
+                                        <input class="form-control" type="text" data-field="fournisseur">
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Type d'article</div>
+                                <div class="row g-3" data-article-type-group>
+                                    <div class="col-md-4">
+                                        <div class="type-card" data-value="Pièce de rechange">
+                                            <div class="type-icon">🔧</div>
+                                            <div>Pièce de rechange</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="type-card" data-value="Consommable">
+                                            <div class="type-icon">🧴</div>
+                                            <div>Consommable</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="type-card" data-value="Outillage">
+                                            <div class="type-icon">🛠️</div>
+                                            <div>Outillage</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Unité de mesure</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label gmao-required">Unité de mesure</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-ruler"></i></span>
+                                        <select class="form-select" data-field="uniteMesure" required>
+                                            <option value="">Sélectionner</option>
+                                            <option value="Pièce">Pièce</option>
+                                            <option value="Litre">Litre</option>
+                                            <option value="Kg">Kg</option>
+                                            <option value="Mètre">Mètre</option>
+                                            <option value="Boîte">Boîte</option>
+                                            <option value="Rouleau">Rouleau</option>
+                                            <option value="Bidon">Bidon</option>
+                                            <option value="Autre">Autre</option>
+                                        </select>
+                                    </div>
+                                    <div class="invalid-feedback">Ce champ est requis.</div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="article-tab-stock" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Stock actuel</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label gmao-required">Stock actuel</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-warehouse"></i></span>
+                                            <input class="form-control" type="number" data-field="stockActuel" required>
+                                        </div>
+                                        <div class="invalid-feedback">Ce champ est requis.</div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Emplacement stock</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-map-marker"></i></span>
+                                            <input class="form-control" type="text" data-field="emplacementStock">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Seuils d'alerte</div>
+                                <div class="row g-3">
+                                    <div class="col-md-4 gmao-form-group">
+                                        <label class="form-label gmao-required">Stock minimum</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-exclamation-triangle"></i></span>
+                                            <input class="form-control" type="number" data-field="stockMinimum" required>
+                                        </div>
+                                        <div class="invalid-feedback">Ce champ est requis.</div>
+                                    </div>
+                                    <div class="col-md-4 gmao-form-group">
+                                        <label class="form-label gmao-required">Stock critique</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-arrow-down"></i></span>
+                                            <input class="form-control" type="number" data-field="stockCritique" required>
+                                        </div>
+                                        <div class="invalid-feedback">Ce champ est requis.</div>
+                                    </div>
+                                    <div class="col-md-4 gmao-form-group">
+                                        <label class="form-label">Qté réapprovisionnement</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-shopping-cart"></i></span>
+                                            <input class="form-control" type="number" data-field="qteReapprovisionnement">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="stock-indicator" data-article-stock-indicator></div>
+
+                                <div class="mt-3 text-uppercase text-muted fw-semibold">Prix &amp; Valorisation</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Prix unitaire (DA)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-money-bill"></i></span>
+                                            <input class="form-control" type="number" data-field="prixUnitaire">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 gmao-form-group">
+                                        <label class="form-label">Valeur stock totale</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-calculator"></i></span>
+                                            <input class="form-control" type="text" data-field="valeurTotale" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="article-tab-organes" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Organes utilisant cet article</div>
+                                <div class="d-flex flex-wrap gap-2 align-items-end">
+                                    <div class="flex-grow-1">
+                                        <label class="form-label">Rechercher un organe</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+                                            <input class="form-control" type="text" list="organe-options" placeholder="Rechercher un organe..." data-article-organe-search>
+                                        </div>
+                                        <datalist id="organe-options"></datalist>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary" data-article-organe-add><i class="fa-solid fa-plus"></i> Ajouter</button>
+                                </div>
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Code organe</th>
+                                                <th>Nom organe</th>
+                                                <th>Équipement parent</th>
+                                                <th>Qté utilisée</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody data-article-organe-table></tbody>
+                                    </table>
+                                </div>
+                                <div class="text-muted small">ⓘ Ces liens permettent de savoir automatiquement quels articles sont nécessaires lors d'une intervention sur un équipement donné.</div>
+                            </div>
+                            <div class="tab-pane fade" id="article-tab-docs" role="tabpanel">
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Photo de l'article</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Photo</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-camera"></i></span>
+                                        <input class="form-control" type="file" accept="image/*" data-field="photo">
+                                    </div>
+                                    <div class="photo-preview" data-article-photo-preview></div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Documents attachés</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Documents</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-paperclip"></i></span>
+                                        <input class="form-control" type="file" multiple accept=".pdf,.doc,.docx" data-field="documents">
+                                    </div>
+                                    <div class="file-list" data-article-file-list></div>
+                                </div>
+
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Notes techniques</div>
+                                <div class="mb-3 gmao-form-group">
+                                    <label class="form-label">Notes / Remarques</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fa-solid fa-sticky-note"></i></span>
+                                        <textarea class="form-control" rows="3" data-field="notes"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-article-action="save" data-level="articles">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-articles-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Article</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-articles-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-groupes-articles-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-groupes-articles-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-article-action="confirm-delete" data-level="groupes">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-articles-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-familles-articles-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-article-action="confirm-delete" data-level="familles">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-articles-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-sousfamilles-articles-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-article-action="confirm-delete" data-level="sousfamilles">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-articles-delete" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="delete-articles-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" data-article-action="confirm-delete" data-level="articles">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="modal fade" id="modal-unites-form" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -1689,6 +3591,467 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="modal-di-form" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-di-title">Nouvelle Demande d'Intervention</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-di" class="needs-validation" novalidate>
+                        <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
+                        <div class="row g-3">
+                            <div class="col-md-4 gmao-form-group">
+                                <label class="form-label">N° DI</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                    <input class="form-control" type="text" data-di-field="numero" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-8 gmao-form-group">
+                                <label class="form-label gmao-required">Titre</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-heading"></i></span>
+                                    <input class="form-control" type="text" placeholder="Vibration anormale pompe P-01" data-di-field="titre" required>
+                                </div>
+                                <div class="invalid-feedback">Ce champ est requis.</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-uppercase text-muted fw-semibold">Équipement concerné</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required">Équipement</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-cog"></i></span>
+                                <select class="form-select" data-di-equipement data-di-field="equipementId" required></select>
+                            </div>
+                            <div class="invalid-feedback">Sélectionnez un équipement.</div>
+                        </div>
+                        <div class="di-equipment-card mb-3" data-di-equipement-info>
+                            <div class="text-muted">Sélectionnez un équipement pour afficher les informations.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Organe concerné</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-puzzle-piece"></i></span>
+                                <select class="form-select" data-di-organe data-di-field="organeId"></select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-uppercase text-muted fw-semibold">Urgence &amp; Type</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required"><i class="fa-solid fa-flag me-2"></i>Urgence</label>
+                            <div class="di-urgency-grid" data-di-urgence-group>
+                                <label class="di-urgency-card">
+                                    <input class="form-check-input" type="radio" name="diUrgence" value="URGENTE" required>
+                                    <span>🔴 Urgente</span>
+                                </label>
+                                <label class="di-urgency-card">
+                                    <input class="form-check-input" type="radio" name="diUrgence" value="HAUTE" required>
+                                    <span>🟠 Haute</span>
+                                </label>
+                                <label class="di-urgency-card">
+                                    <input class="form-check-input" type="radio" name="diUrgence" value="NORMALE" required>
+                                    <span>🟡 Normale</span>
+                                </label>
+                                <label class="di-urgency-card">
+                                    <input class="form-check-input" type="radio" name="diUrgence" value="BASSE" required>
+                                    <span>🟢 Basse</span>
+                                </label>
+                            </div>
+                            <div class="invalid-feedback">Veuillez sélectionner une urgence.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required"><i class="fa-solid fa-tools me-2"></i>Type d'intervention</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-tools"></i></span>
+                                <select class="form-select" data-di-field="typeIntervention" required>
+                                    <option value="">Sélectionner</option>
+                                    <option>Panne</option>
+                                    <option>Anomalie détectée</option>
+                                    <option>Maintenance préventive</option>
+                                    <option>Inspection</option>
+                                    <option>Amélioration</option>
+                                    <option>Autre</option>
+                                </select>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+
+                        <div class="mt-4 text-uppercase text-muted fw-semibold">Description du problème</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required"><i class="fa-solid fa-exclamation-circle me-2"></i>Description</label>
+                            <textarea class="form-control" rows="3" placeholder="Décrivez le problème observé en détail" data-di-field="description" required></textarea>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label"><i class="fa-solid fa-list-ul me-2"></i>Symptômes observés</label>
+                            <textarea class="form-control" rows="2" placeholder="Listez les symptômes: bruit, vibration, fuite..." data-di-field="symptomes"></textarea>
+                        </div>
+
+                        <div class="mt-4 text-uppercase text-muted fw-semibold">Disponibilité équipement</div>
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fa-solid fa-power-off me-2"></i>L'équipement est-il arrêté ?</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <input class="btn-check" type="radio" name="diDisponibilite" id="di-arret-total" value="ARRET_TOTAL" required>
+                                <label class="btn btn-outline-danger" for="di-arret-total">Oui — Arrêt total</label>
+                                <input class="btn-check" type="radio" name="diDisponibilite" id="di-degrade" value="DEGRADE" required>
+                                <label class="btn btn-outline-warning" for="di-degrade">Oui — Dégradé</label>
+                                <input class="btn-check" type="radio" name="diDisponibilite" id="di-en-service" value="EN_SERVICE" required>
+                                <label class="btn btn-outline-success" for="di-en-service">Non</label>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 text-uppercase text-muted fw-semibold">Photos / Documents</div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label"><i class="fa-solid fa-camera me-2"></i>Photos du problème</label>
+                            <input class="form-control" type="file" accept="image/*" multiple data-di-photos>
+                            <div class="text-muted small mt-1">Max 5 photos.</div>
+                            <div class="di-photo-preview" data-di-photo-preview></div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label"><i class="fa-solid fa-paperclip me-2"></i>Documents joints</label>
+                            <input class="form-control" type="file" accept=".pdf,.doc,.docx" multiple data-di-documents>
+                            <div class="di-doc-list" data-di-doc-list></div>
+                        </div>
+
+                        <div class="mt-4 text-uppercase text-muted fw-semibold">Informations demandeur</div>
+                        <div class="row g-3">
+                            <div class="col-md-6 gmao-form-group">
+                                <label class="form-label">Demandeur</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                                    <input class="form-control" type="text" data-di-field="demandeur" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6 gmao-form-group">
+                                <label class="form-label">Date</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-calendar"></i></span>
+                                    <input class="form-control" type="text" data-di-field="dateSoumission" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6 gmao-form-group">
+                                <label class="form-label">Téléphone</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-phone"></i></span>
+                                    <input class="form-control" type="text" data-di-field="telephoneDemandeur" placeholder="Numéro pour rappel">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-di-action="save">Enregistrer la demande</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-di-examen" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Examen de la Demande</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="di-summary-card mb-4" data-di-examen-summary></div>
+                    <div class="text-uppercase text-muted fw-semibold mb-2">Décision</div>
+                    <div class="di-decision-grid mb-3" data-di-decision-group>
+                        <input class="btn-check" type="radio" name="diDecision" id="di-decision-accept" value="ACCEPTEE">
+                        <label class="di-decision-card" for="di-decision-accept">✅ ACCEPTER LA DEMANDE</label>
+                        <input class="btn-check" type="radio" name="diDecision" id="di-decision-refuse" value="REFUSEE">
+                        <label class="di-decision-card" for="di-decision-refuse">❌ REFUSER LA DEMANDE</label>
+                    </div>
+
+                    <div class="di-examen-accept d-none" data-di-examen-accept>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label"><i class="fa-solid fa-flag me-2"></i>Priorité OT suggérée</label>
+                            <select class="form-select" data-di-field="prioriteOTSuggeree">
+                                <option value="URGENTE">Urgente</option>
+                                <option value="HAUTE">Haute</option>
+                                <option value="NORMALE">Normale</option>
+                                <option value="BASSE">Basse</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label"><i class="fa-solid fa-tools me-2"></i>Type maintenance</label>
+                            <select class="form-select" data-di-field="typeMaintenanceSuggeree">
+                                <option value="MC-Corrective">MC-Corrective</option>
+                                <option value="MP-Préventive">MP-Préventive</option>
+                                <option value="MA-Améliorative">MA-Améliorative</option>
+                                <option value="MR-Réglementaire">MR-Réglementaire</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="di-examen-refus d-none" data-di-examen-refus>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label gmao-required"><i class="fa-solid fa-comment-times me-2"></i>Motif de refus</label>
+                            <textarea class="form-control" rows="3" placeholder="Expliquez pourquoi la demande est refusée" data-di-field="motifRefus"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 gmao-form-group">
+                        <label class="form-label"><i class="fa-solid fa-comment me-2"></i>Commentaire examinateur</label>
+                        <textarea class="form-control" rows="2" data-di-field="commentaireExaminateur"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 gmao-form-group">
+                            <label class="form-label">Examinateur</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+                                <input class="form-control" type="text" data-di-field="examinateur" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6 gmao-form-group">
+                            <label class="form-label">Date examen</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-calendar"></i></span>
+                                <input class="form-control" type="text" data-di-field="dateExamen" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-di-action="confirm-decision">Confirmer la décision</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-di-ot" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Convertir en Ordre de Travail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="di-summary-card mb-4" data-di-ot-summary></div>
+                    <form id="form-di-ot" class="needs-validation" novalidate>
+                        <div class="text-uppercase text-muted fw-semibold mb-2">OT à créer</div>
+                        <div class="row g-3">
+                            <div class="col-md-4 gmao-form-group">
+                                <label class="form-label">N° OT</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                    <input class="form-control" type="text" data-di-ot-field="numero" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-8 gmao-form-group">
+                                <label class="form-label gmao-required">Titre OT</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fa-solid fa-heading"></i></span>
+                                    <input class="form-control" type="text" data-di-ot-field="titre" required>
+                                </div>
+                                <div class="invalid-feedback">Ce champ est requis.</div>
+                            </div>
+                            <div class="col-md-6 gmao-form-group">
+                                <label class="form-label gmao-required">Type</label>
+                                <select class="form-select" data-di-ot-field="typeMaintenance" required>
+                                    <option value="">Sélectionner</option>
+                                    <option value="MC-Corrective">MC-Corrective</option>
+                                    <option value="MP-Préventive">MP-Préventive</option>
+                                    <option value="MA-Améliorative">MA-Améliorative</option>
+                                    <option value="MR-Réglementaire">MR-Réglementaire</option>
+                                </select>
+                                <div class="invalid-feedback">Ce champ est requis.</div>
+                            </div>
+                            <div class="col-md-6 gmao-form-group">
+                                <label class="form-label gmao-required">Priorité</label>
+                                <select class="form-select" data-di-ot-field="priorite" required>
+                                    <option value="">Sélectionner</option>
+                                    <option value="URGENTE">Urgente</option>
+                                    <option value="HAUTE">Haute</option>
+                                    <option value="NORMALE">Normale</option>
+                                    <option value="BASSE">Basse</option>
+                                </select>
+                                <div class="invalid-feedback">Ce champ est requis.</div>
+                            </div>
+                            <div class="col-md-6 gmao-form-group">
+                                <label class="form-label gmao-required">Date prévue début</label>
+                                <input class="form-control" type="date" data-di-ot-field="dateDebut" required>
+                                <div class="invalid-feedback">Ce champ est requis.</div>
+                            </div>
+                            <div class="col-md-6 gmao-form-group">
+                                <label class="form-label gmao-required">Date prévue fin</label>
+                                <input class="form-control" type="date" data-di-ot-field="dateFin" required>
+                                <div class="invalid-feedback">Ce champ est requis.</div>
+                            </div>
+                            <div class="col-md-12 gmao-form-group">
+                                <label class="form-label">Technicien</label>
+                                <select class="form-select" data-di-ot-field="technicien"></select>
+                            </div>
+                        </div>
+                        <div class="di-ot-info mt-3">ⓘ L'OT sera lié à cette DI. Vous pourrez compléter les détails depuis le module Ordres de Travail.</div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-success" data-di-action="create-ot">Créer l'Ordre de Travail</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-di-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détail Demande d'Intervention</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="di-detail-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-ot-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détail Ordre de Travail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="ot-detail-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-bt-generate" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Générer un Bon de Travail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="bt-summary-card mb-3" data-bt-generate-summary></div>
+                    <form id="form-bt-generate" class="needs-validation" novalidate>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">N° BT</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                                <input class="form-control" type="text" data-bt-field="numero" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Date prévue</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-calendar"></i></span>
+                                <input class="form-control" type="date" data-bt-field="datePrevue" required>
+                            </div>
+                            <div class="invalid-feedback">Ce champ est requis.</div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Heure prévue</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fa-solid fa-clock"></i></span>
+                                <input class="form-control" type="time" data-bt-field="heurePrevue">
+                            </div>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Instructions spéciales</label>
+                            <textarea class="form-control" rows="2" data-bt-field="instructionsSpeciales"></textarea>
+                        </div>
+                        <div class="mb-3 gmao-form-group">
+                            <label class="form-label">Consignes sécurité</label>
+                            <textarea class="form-control" rows="2" data-bt-field="consignesSecurite"></textarea>
+                        </div>
+                        <div class="mb-2 text-uppercase text-muted fw-semibold">EPI requis</div>
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="Casque" id="epi-casque" data-bt-epi>
+                                <label class="form-check-label" for="epi-casque">Casque</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="Gants" id="epi-gants" data-bt-epi>
+                                <label class="form-check-label" for="epi-gants">Gants</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="Lunettes" id="epi-lunettes" data-bt-epi>
+                                <label class="form-check-label" for="epi-lunettes">Lunettes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="Chaussures sécu." id="epi-chaussures" data-bt-epi>
+                                <label class="form-check-label" for="epi-chaussures">Chaussures sécu.</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="Harnais" id="epi-harnais" data-bt-epi>
+                                <label class="form-check-label" for="epi-harnais">Harnais</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="Masque" id="epi-masque" data-bt-epi>
+                                <label class="form-check-label" for="epi-masque">Masque</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="Combinaison" id="epi-combinaison" data-bt-epi>
+                                <label class="form-check-label" for="epi-combinaison">Combinaison</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" data-bt-action="generate-confirm">Générer le BT</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-bt-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détail Bon de Travail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="bt-detail-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-bt-validate" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Validation du Bon de Travail</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="bt-validate-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-success" data-bt-action="validate-confirm">Confirmer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-bt-print" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bon de Travail imprimable</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="bt-print-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-outline-primary" data-bt-action="print-confirm"><i class="fa-solid fa-print me-2"></i>Imprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bt-printable" class="bt-printable"></div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toast-container"></div>
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/algeria-geo.js"></script>
