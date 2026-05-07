@@ -49,6 +49,75 @@ let groupesArticles = [];
 let famillesArticles = [];
 let sousFamillesArticles = [];
 let articles = [];
+let fournisseurs = [
+    {
+        id: "four-1",
+        code: "FRN-0001",
+        nom: "SKF Algérie",
+        contact: "M. Boualem",
+        telephone: "021 00 00 01",
+        email: "contact@skf.dz",
+        adresse: "Zone Industrielle, Alger",
+        delaiMoyen: 7,
+        actif: true,
+        createdAt: new Date().toISOString()
+    }
+];
+let mouvementsStock = [
+    {
+        id: "mvt-1",
+        articleId: "art-1",
+        articleDesignation: "Roulement SKF 6205",
+        articleRef: "SKF-6205",
+        type: "ENTREE",
+        motif: "REAPPROVISIONNEMENT",
+        quantite: 10,
+        quantiteAvant: 5,
+        quantiteApres: 15,
+        prixUnitaire: 4500,
+        valeurMouvement: 45000,
+        otId: null,
+        otNumero: null,
+        btId: null,
+        btNumero: null,
+        fournisseurId: "four-1",
+        fournisseurNom: "SKF Algérie",
+        numeroBC: "BC-2026-0001",
+        numeroBL: "BL-2026-0001",
+        dateMouvement: new Date().toISOString(),
+        saisiPar: "Admin",
+        emplacementSource: "",
+        emplacementDest: "Rack A3",
+        observation: "",
+        createdAt: new Date().toISOString()
+    }
+];
+let commandesAchat = [
+    {
+        id: "cmd-1",
+        numero: "BC-2026-0001",
+        fournisseurId: "four-1",
+        fournisseurNom: "SKF Algérie",
+        statut: "LIVREE",
+        dateCommande: "2026-01-15",
+        dateLivraisonPrevue: "2026-01-22",
+        dateLivraisonReelle: "2026-01-21",
+        lignes: [
+            {
+                articleId: "art-1",
+                articleRef: "SKF-6205",
+                articleNom: "Roulement SKF 6205",
+                qtCommandee: 10,
+                qtLivree: 10,
+                prixUnitaire: 4500,
+                totalLigne: 45000
+            }
+        ],
+        montantTotal: 45000,
+        observations: "",
+        createdAt: new Date().toISOString()
+    }
+];
 
 const company = {
     id: "company-1",
@@ -2047,10 +2116,10 @@ const populateEquipSelects = (form, level) => {
         groupSelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(groupesEquipements)}`;
     }
     if (familySelect) {
-        familySelect.innerHTML = "<option value=\"\">Sélectionner</option>";
+        familySelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(famillesEquipements)}`;
     }
     if (subFamilySelect) {
-        subFamilySelect.innerHTML = "<option value=\"\">Sélectionner</option>";
+        subFamilySelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(sousFamillesEquipements)}`;
     }
 
     if (level === "familles") {
@@ -2080,13 +2149,16 @@ const populateEquipSelects = (form, level) => {
 };
 
 const cascadeEquipFamilies = (groupId, familySelect, subFamilySelect) => {
-    const families = famillesEquipements.filter((fam) => fam.groupeId === groupId);
+    const families = groupId ? famillesEquipements.filter((fam) => fam.groupeId === groupId) : famillesEquipements;
     familySelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(families)}`;
-    subFamilySelect.innerHTML = "<option value=\"\">Sélectionner</option>";
+    const subs = groupId
+        ? sousFamillesEquipements.filter((sf) => families.some((fam) => fam.id === sf.familleId))
+        : sousFamillesEquipements;
+    subFamilySelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(subs)}`;
 };
 
 const cascadeEquipSubFamilies = (familyId, subFamilySelect) => {
-    const subs = sousFamillesEquipements.filter((sf) => sf.familleId === familyId);
+    const subs = familyId ? sousFamillesEquipements.filter((sf) => sf.familleId === familyId) : sousFamillesEquipements;
     subFamilySelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(subs)}`;
 };
 
@@ -3562,18 +3634,24 @@ const confirmArticleDelete = (level) => {
 };
 
 const checkStockAlerts = () => {
-    const notifications = [];
-    articles.map((article) => computeArticleStats(article)).forEach((article) => {
-        if (article.statutStock === "Faible") {
-            notifications.push(`⚠️ Stock faible: ${article.designation} (${article.stockActuel} restants)`);
-        }
-        if (article.statutStock === "Critique") {
-            notifications.push(`🔴 Stock critique: ${article.designation} (${article.stockActuel} restants)`);
-        }
-        if (article.statutStock === "Rupture") {
-            notifications.push(`🔴 Rupture: ${article.designation} (0 restants)`);
-        }
+    ensureArticleStockFields();
+    const ruptures = articles.filter((a) => (Number(a.stockActuel) || 0) === 0);
+    const critiques = articles.filter((a) => {
+        const s = Number(a.stockActuel) || 0;
+        const c = Number(a.stockCritique) || 0;
+        return s > 0 && s <= c;
     });
+    const faibles = articles.filter((a) => {
+        const s = Number(a.stockActuel) || 0;
+        const min = Number(a.stockMinimum) || 0;
+        const c = Number(a.stockCritique) || 0;
+        return s > c && s <= min;
+    });
+    const notifications = [
+        ...ruptures.map((a) => `🔴 Rupture: ${a.designation} (0 restants)`),
+        ...critiques.map((a) => `🔴 Stock critique: ${a.designation} (${a.stockActuel} restants)`),
+        ...faibles.map((a) => `⚠️ Stock faible: ${a.designation} (${a.stockActuel} restants)`)
+    ];
 
     const badge = document.getElementById("notification-count");
     const list = document.getElementById("notification-list");
@@ -3588,6 +3666,444 @@ const checkStockAlerts = () => {
             list.innerHTML = notifications.map((text) => `<li><span class="dropdown-item-text">${text}</span></li>`).join("");
         }
     }
+    const banner = document.getElementById("stock-rupture-banner");
+    if (banner) {
+        if (ruptures.length) {
+            banner.innerHTML = `<div class="alert alert-danger alert-dismissible fade show" role="alert">⚠️ ${ruptures.length} article(s) en rupture de stock nécessitent votre attention. <a href="#" data-stock-alert-view="ruptures">Voir les ruptures</a><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
+        } else {
+            banner.innerHTML = "";
+        }
+    }
+};
+
+const stockState = {
+    articleSearch: "",
+    articleFilter: "TOUS",
+    mvtDateDebut: "",
+    mvtDateFin: "",
+    mvtType: "",
+    mvtArticle: ""
+};
+let stockCommandeContextId = null;
+
+const ensureArticleStockFields = () => {
+    articles.forEach((article) => {
+        if (article.designation === undefined) article.designation = article.nom || "";
+        if (article.referenceInterne === undefined) article.referenceInterne = article.code || "";
+        if (article.prixUnitaire === undefined) article.prixUnitaire = 0;
+        if (article.stockActuel === undefined) article.stockActuel = 0;
+        if (article.stockMinimum === undefined) article.stockMinimum = 0;
+        if (article.stockCritique === undefined) article.stockCritique = 0;
+        if (!Array.isArray(article.organeLinks)) article.organeLinks = [];
+        if (!Array.isArray(article.photos)) article.photos = [];
+        if (!Array.isArray(article.documents)) article.documents = [];
+        if (article.fournisseurId === undefined) article.fournisseurId = "";
+        if (article.delaiReappro === undefined) article.delaiReappro = 0;
+        if (article.codeBarre === undefined) article.codeBarre = "";
+        if (article.dateDernierMouvement === undefined) article.dateDernierMouvement = "";
+        if (article.dateInventaire === undefined) article.dateInventaire = "";
+        if (article.observations === undefined) article.observations = "";
+        article.valeurTotale = (Number(article.stockActuel) || 0) * (Number(article.prixUnitaire) || 0);
+    });
+};
+
+const stockStatusFromArticle = (article) => {
+    const stock = Number(article.stockActuel) || 0;
+    const min = Number(article.stockMinimum) || 0;
+    const crit = Number(article.stockCritique) || 0;
+    if (stock === 0) return "RUPTURE";
+    if (stock <= crit) return "CRITIQUE";
+    if (stock <= min) return "FAIBLE";
+    return "OK";
+};
+
+const renderStockKpis = () => {
+    ensureArticleStockFields();
+    const total = articles.length;
+    const valeur = articles.reduce((sum, a) => sum + ((Number(a.stockActuel) || 0) * (Number(a.prixUnitaire) || 0)), 0);
+    const ruptures = articles.filter((a) => (Number(a.stockActuel) || 0) === 0).length;
+    const alertes = articles.filter((a) => {
+        const s = Number(a.stockActuel) || 0;
+        const min = Number(a.stockMinimum) || 0;
+        return s > 0 && s <= min;
+    }).length;
+    const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    setText("stock-kpi-total", `${total}`);
+    setText("stock-kpi-valeur", `${valeur.toLocaleString("fr-FR")}`);
+    setText("stock-kpi-rupture", `${ruptures}`);
+    setText("stock-kpi-alertes", `${alertes}`);
+};
+
+const renderReapproSuggestions = () => {
+    const container = document.getElementById("stock-reappro-content");
+    if (!container) return;
+    const targets = articles.filter((a) => (Number(a.stockActuel) || 0) <= (Number(a.stockMinimum) || 0));
+    if (!targets.length) {
+        container.innerHTML = `<div class="text-muted">Aucune suggestion de réapprovisionnement.</div>`;
+        return;
+    }
+    container.innerHTML = targets.map((a) => `
+        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div>${a.designation} — Commander ${Number(a.qteReapprovisionnement) || 0} unités</div>
+            <button class="btn btn-outline-primary btn-sm" data-stock-action="prefill-commande" data-article-id="${a.id}">Créer une commande</button>
+        </div>`).join("");
+};
+
+const renderStockArticlesTab = () => {
+    const tbody = document.getElementById("stock-articles-body");
+    if (!tbody) return;
+    ensureArticleStockFields();
+    let items = [...articles];
+    const search = stockState.articleSearch.trim().toLowerCase();
+    if (search) {
+        items = items.filter((a) => `${a.designation} ${a.referenceInterne} ${a.code} ${a.familleNom} ${a.fournisseur}`.toLowerCase().includes(search));
+    }
+    if (stockState.articleFilter !== "TOUS") {
+        items = items.filter((a) => stockStatusFromArticle(a) === stockState.articleFilter);
+    }
+    if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted">Aucun article.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = items.map((a) => {
+        const stock = Number(a.stockActuel) || 0;
+        const min = Number(a.stockMinimum) || 0;
+        const maxGauge = Math.max(min * 2, 1);
+        const pct = Math.min(100, Math.round((stock / maxGauge) * 100));
+        const status = stockStatusFromArticle(a);
+        const badgeMap = {
+            RUPTURE: `<span class="badge bg-danger">Rupture</span>`,
+            CRITIQUE: `<span class="badge bg-danger">Critique</span>`,
+            FAIBLE: `<span class="badge bg-warning text-dark">Faible</span>`,
+            OK: `<span class="badge bg-success">OK</span>`
+        };
+        const barClass = status === "RUPTURE" || status === "CRITIQUE" ? "bg-danger" : status === "FAIBLE" ? "bg-warning" : "bg-success";
+        const valeur = stock * (Number(a.prixUnitaire) || 0);
+        return `<tr>
+            <td>${a.referenceInterne || a.code || "-"}</td>
+            <td>${a.designation || "-"}</td>
+            <td>${a.familleNom || "-"}</td>
+            <td>${a.fournisseur || fournisseurs.find((f) => f.id === a.fournisseurId)?.nom || "-"}</td>
+            <td>
+                <div>${stock}</div>
+                <div class="progress mt-1" style="height:6px;"><div class="progress-bar ${barClass}" style="width:${pct}%"></div></div>
+            </td>
+            <td>${min}</td>
+            <td>${Number(a.stockCritique) || 0}</td>
+            <td>${a.emplacementStock || "-"}</td>
+            <td>${badgeMap[status]}</td>
+            <td>${(Number(a.prixUnitaire) || 0).toLocaleString("fr-FR")}</td>
+            <td>${valeur.toLocaleString("fr-FR")}</td>
+            <td><div class="d-flex gap-1">
+                <button class="btn btn-outline-secondary btn-sm" data-article-action="detail" data-level="articles" data-id="${a.id}" title="Voir"><i class="fa-solid fa-eye"></i></button>
+                <button class="btn btn-outline-primary btn-sm" data-article-action="edit" data-level="articles" data-id="${a.id}" title="Modifier"><i class="fa-solid fa-edit"></i></button>
+                <button class="btn btn-outline-success btn-sm" data-stock-action="open-entree" data-article-id="${a.id}" title="Entrée"><i class="fa-solid fa-arrow-down"></i></button>
+                <button class="btn btn-outline-danger btn-sm" data-stock-action="open-sortie" data-article-id="${a.id}" title="Sortie"><i class="fa-solid fa-arrow-up"></i></button>
+                <button class="btn btn-outline-danger btn-sm" data-article-action="delete" data-level="articles" data-id="${a.id}" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
+            </div></td>
+        </tr>`;
+    }).join("");
+};
+
+const renderMouvementsTab = () => {
+    const tbody = document.getElementById("stock-mouvements-body");
+    const totalEl = document.getElementById("stock-mvt-total");
+    if (!tbody) return;
+    let items = [...mouvementsStock];
+    if (stockState.mvtDateDebut) items = items.filter((m) => new Date(m.dateMouvement) >= new Date(stockState.mvtDateDebut));
+    if (stockState.mvtDateFin) items = items.filter((m) => new Date(m.dateMouvement) <= new Date(`${stockState.mvtDateFin}T23:59:59`));
+    if (stockState.mvtType) items = items.filter((m) => m.type === stockState.mvtType);
+    if (stockState.mvtArticle) {
+        const q = stockState.mvtArticle.toLowerCase();
+        items = items.filter((m) => `${m.articleDesignation} ${m.articleRef}`.toLowerCase().includes(q));
+    }
+    const meta = {
+        ENTREE: ["bg-success", "fa-arrow-down", "Entrée"],
+        SORTIE: ["bg-danger", "fa-arrow-up", "Sortie"],
+        AJUSTEMENT: ["bg-warning text-dark", "fa-balance-scale", "Ajustement"],
+        RETOUR: ["bg-info text-dark", "fa-undo", "Retour"],
+        INVENTAIRE: ["bg-secondary", "fa-list-check", "Inventaire"]
+    };
+    tbody.innerHTML = items.map((m) => {
+        const [cls, icon, label] = meta[m.type] || ["bg-secondary", "fa-circle", m.type];
+        const sign = m.type === "SORTIE" ? "-" : "+";
+        return `<tr>
+            <td>${formatDateTime(m.dateMouvement)}</td>
+            <td><span class="badge ${cls}"><i class="fa-solid ${icon} me-1"></i>${label}</span></td>
+            <td>${m.motif || "-"}</td>
+            <td>${m.articleDesignation || "-"}</td>
+            <td>${m.articleRef || "-"}</td>
+            <td>${m.quantiteAvant ?? 0}</td>
+            <td>${sign}${Number(m.quantite) || 0}</td>
+            <td>${m.quantiteApres ?? 0}</td>
+            <td>${(Number(m.prixUnitaire) || 0).toLocaleString("fr-FR")}</td>
+            <td>${(Number(m.valeurMouvement) || 0).toLocaleString("fr-FR")}</td>
+            <td>${m.otNumero || m.btNumero || "-"}</td>
+            <td>${m.saisiPar || "-"}</td>
+        </tr>`;
+    }).join("") || `<tr><td colspan="12" class="text-center text-muted">Aucun mouvement.</td></tr>`;
+    if (totalEl) totalEl.textContent = `${items.reduce((s, m) => s + (Number(m.valeurMouvement) || 0), 0).toLocaleString("fr-FR")}`;
+};
+
+const renderCommandesTab = () => {
+    const tbody = document.getElementById("stock-commandes-body");
+    if (!tbody) return;
+    const badge = {
+        BROUILLON: `<span class="badge bg-secondary">Brouillon</span>`,
+        ENVOYEE: `<span class="badge bg-primary">Envoyée</span>`,
+        PARTIELLEMENT_LIVREE: `<span class="badge bg-warning text-dark">Part. livrée</span>`,
+        LIVREE: `<span class="badge bg-success">Livrée</span>`,
+        ANNULEE: `<span class="badge bg-danger">Annulée</span>`
+    };
+    tbody.innerHTML = commandesAchat.map((c) => `<tr>
+        <td>${c.numero}</td><td>${c.fournisseurNom || "-"}</td><td>${c.dateCommande || "-"}</td><td>${c.dateLivraisonPrevue || "-"}</td>
+        <td>${badge[c.statut] || c.statut}</td><td>${(c.lignes || []).length}</td><td>${(Number(c.montantTotal) || 0).toLocaleString("fr-FR")}</td>
+        <td><div class="d-flex gap-1">
+            <button class="btn btn-outline-secondary btn-sm" data-stock-action="view-commande" data-id="${c.id}">Voir détail</button>
+            <button class="btn btn-outline-primary btn-sm" data-stock-action="edit-commande" data-id="${c.id}">Modifier</button>
+            <button class="btn btn-outline-success btn-sm" data-stock-action="livrer-commande" data-id="${c.id}">Marquer Livrée</button>
+            <button class="btn btn-outline-danger btn-sm" data-stock-action="cancel-commande" data-id="${c.id}">Annuler</button>
+        </div></td></tr>`).join("") || `<tr><td colspan="8" class="text-center text-muted">Aucune commande.</td></tr>`;
+};
+
+const renderFournisseursTab = () => {
+    const tbody = document.getElementById("stock-fournisseurs-body");
+    if (!tbody) return;
+    tbody.innerHTML = fournisseurs.map((f) => {
+        const linked = articles.filter((a) => a.fournisseurId === f.id).length;
+        return `<tr>
+            <td>${f.code}</td><td>${f.nom}</td><td>${f.contact || "-"}</td><td>${f.telephone || "-"}</td><td>${f.email || "-"}</td>
+            <td>${f.delaiMoyen ?? "-"}</td><td>${linked}</td><td>${f.actif ? `<span class="badge bg-success">Oui</span>` : `<span class="badge bg-secondary">Non</span>`}</td>
+            <td><div class="d-flex gap-1"><button class="btn btn-outline-secondary btn-sm" data-stock-action="view-fournisseur" data-id="${f.id}">Voir</button><button class="btn btn-outline-primary btn-sm" data-stock-action="edit-fournisseur" data-id="${f.id}">Modifier</button><button class="btn btn-outline-danger btn-sm" data-stock-action="delete-fournisseur" data-id="${f.id}">Supprimer</button></div></td>
+        </tr>`;
+    }).join("") || `<tr><td colspan="9" class="text-center text-muted">Aucun fournisseur.</td></tr>`;
+};
+
+const renderStockTabs = () => {
+    renderStockArticlesTab();
+    renderMouvementsTab();
+    renderCommandesTab();
+    renderFournisseursTab();
+    renderStockKpis();
+    renderReapproSuggestions();
+};
+
+const generateBCNumber = () => {
+    const index = commandesAchat.length + 1;
+    return `BC-${new Date().getFullYear()}-${String(index).padStart(4, "0")}`;
+};
+
+const generateFRNCode = () => {
+    const index = fournisseurs.length + 1;
+    return `FRN-${String(index).padStart(4, "0")}`;
+};
+
+const saveEntreeStock = () => {
+    const articleId = document.getElementById("entree-article")?.value;
+    const qte = Number(document.getElementById("entree-quantite")?.value || 0);
+    if (!articleId || qte < 1) return;
+    const article = articles.find((a) => a.id === articleId);
+    if (!article) return;
+    const qteBefore = Number(article.stockActuel) || 0;
+    article.stockActuel = qteBefore + qte;
+    article.dateDernierMouvement = new Date().toISOString();
+    const fournisseurId = document.getElementById("entree-fournisseur")?.value || null;
+    const fournisseur = fournisseurs.find((f) => f.id === fournisseurId);
+    const prixUnitaire = Number(document.getElementById("entree-prix")?.value || article.prixUnitaire || 0);
+    mouvementsStock.push({
+        id: createId(),
+        articleId: article.id,
+        articleDesignation: article.designation,
+        articleRef: article.referenceInterne || article.code,
+        type: "ENTREE",
+        motif: document.getElementById("entree-motif")?.value || "REAPPROVISIONNEMENT",
+        quantite: qte,
+        quantiteAvant: qteBefore,
+        quantiteApres: article.stockActuel,
+        prixUnitaire,
+        valeurMouvement: qte * prixUnitaire,
+        otId: null, otNumero: null, btId: null, btNumero: null,
+        fournisseurId,
+        fournisseurNom: fournisseur?.nom || null,
+        numeroBC: document.getElementById("entree-bc")?.value || "",
+        numeroBL: document.getElementById("entree-bl")?.value || "",
+        dateMouvement: document.getElementById("entree-date")?.value || new Date().toISOString(),
+        saisiPar: diUser?.name ?? "Système",
+        emplacementSource: "",
+        emplacementDest: document.getElementById("entree-emplacement")?.value || article.emplacementStock || "",
+        observation: document.getElementById("entree-observation")?.value || "",
+        createdAt: new Date().toISOString()
+    });
+    renderStockTabs();
+    renderArticleTables();
+    checkStockAlerts();
+    showToast(`✅ Entrée enregistrée. Stock: ${article.stockActuel}`, "success");
+};
+
+const saveSortieStock = () => {
+    const articleId = document.getElementById("sortie-article")?.value;
+    const qte = Number(document.getElementById("sortie-quantite")?.value || 0);
+    const article = articles.find((a) => a.id === articleId);
+    if (!article || qte < 1) return;
+    const qteBefore = Number(article.stockActuel) || 0;
+    if (qte > qteBefore) {
+        showToast("Quantité insuffisante en stock", "warning");
+        return;
+    }
+    article.stockActuel = Math.max(0, qteBefore - qte);
+    article.dateDernierMouvement = new Date().toISOString();
+    const otId = document.getElementById("sortie-ot")?.value || null;
+    const btId = document.getElementById("sortie-bt")?.value || null;
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    const bt = bonsDeTravail.find((b) => b.id === btId);
+    const prixUnitaire = Number(article.prixUnitaire) || 0;
+    mouvementsStock.push({
+        id: createId(),
+        articleId: article.id,
+        articleDesignation: article.designation,
+        articleRef: article.referenceInterne || article.code,
+        type: "SORTIE",
+        motif: document.getElementById("sortie-motif")?.value || "UTILISATION_OT",
+        quantite: qte,
+        quantiteAvant: qteBefore,
+        quantiteApres: article.stockActuel,
+        prixUnitaire,
+        valeurMouvement: qte * prixUnitaire,
+        otId, otNumero: ot?.numero || null,
+        btId, btNumero: bt?.numero || null,
+        fournisseurId: null, fournisseurNom: null,
+        numeroBC: "", numeroBL: "",
+        dateMouvement: document.getElementById("sortie-date")?.value || new Date().toISOString(),
+        saisiPar: diUser?.name ?? "Système",
+        emplacementSource: document.getElementById("sortie-emplacement")?.value || article.emplacementStock || "",
+        emplacementDest: "",
+        observation: document.getElementById("sortie-observation")?.value || "",
+        createdAt: new Date().toISOString()
+    });
+    if (article.stockActuel === 0) showToast(`⚠️ Rupture de stock: ${article.designation}`, "warning");
+    else if (article.stockActuel <= (Number(article.stockMinimum) || 0)) showToast(`⚠️ Stock faible: ${article.designation}`, "warning");
+    renderStockTabs();
+    checkStockAlerts();
+};
+
+const saveAjustementStock = () => {
+    const articleId = document.getElementById("ajust-article")?.value;
+    const nouveau = Number(document.getElementById("ajust-stock-nouveau")?.value || 0);
+    const article = articles.find((a) => a.id === articleId);
+    if (!article || nouveau < 0) return;
+    const avant = Number(article.stockActuel) || 0;
+    const ecart = nouveau - avant;
+    article.stockActuel = nouveau;
+    article.dateInventaire = document.getElementById("ajust-date")?.value || new Date().toISOString();
+    article.dateDernierMouvement = new Date().toISOString();
+    mouvementsStock.push({
+        id: createId(),
+        articleId: article.id,
+        articleDesignation: article.designation,
+        articleRef: article.referenceInterne || article.code,
+        type: "AJUSTEMENT",
+        motif: document.getElementById("ajust-motif")?.value || "ECART_INVENTAIRE",
+        quantite: Math.abs(ecart),
+        quantiteAvant: avant,
+        quantiteApres: nouveau,
+        prixUnitaire: Number(article.prixUnitaire) || 0,
+        valeurMouvement: Math.abs(ecart) * (Number(article.prixUnitaire) || 0),
+        otId: null, otNumero: null, btId: null, btNumero: null,
+        fournisseurId: null, fournisseurNom: null,
+        numeroBC: "", numeroBL: "",
+        dateMouvement: document.getElementById("ajust-date")?.value || new Date().toISOString(),
+        saisiPar: diUser?.name ?? "Système",
+        emplacementSource: article.emplacementStock || "",
+        emplacementDest: article.emplacementStock || "",
+        observation: document.getElementById("ajust-observation")?.value || "",
+        createdAt: new Date().toISOString()
+    });
+    renderStockTabs();
+    checkStockAlerts();
+    showToast(`🔧 Stock ajusté. Écart: ${ecart}`, "info");
+};
+
+const liverCommande = (commandeId) => {
+    const commande = commandesAchat.find((c) => c.id === commandeId);
+    if (!commande) return;
+    commande.statut = "LIVREE";
+    commande.dateLivraisonReelle = new Date().toISOString().slice(0, 10);
+    (commande.lignes || []).forEach((ligne) => {
+        const article = articles.find((a) => a.id === ligne.articleId);
+        if (!article) return;
+        const before = Number(article.stockActuel) || 0;
+        const qte = Number(ligne.qtLivree || 0);
+        article.stockActuel = before + qte;
+        article.dateDernierMouvement = new Date().toISOString();
+        mouvementsStock.push({
+            id: createId(),
+            articleId: article.id,
+            articleDesignation: article.designation,
+            articleRef: article.referenceInterne || article.code,
+            type: "ENTREE",
+            motif: "REAPPROVISIONNEMENT",
+            quantite: qte,
+            quantiteAvant: before,
+            quantiteApres: article.stockActuel,
+            prixUnitaire: Number(ligne.prixUnitaire || article.prixUnitaire || 0),
+            valeurMouvement: qte * Number(ligne.prixUnitaire || article.prixUnitaire || 0),
+            otId: null, otNumero: null, btId: null, btNumero: null,
+            fournisseurId: commande.fournisseurId,
+            fournisseurNom: commande.fournisseurNom,
+            numeroBC: commande.numero,
+            numeroBL: "",
+            dateMouvement: new Date().toISOString(),
+            saisiPar: diUser?.name ?? "Système",
+            emplacementSource: "",
+            emplacementDest: article.emplacementStock || "",
+            observation: `Livraison commande ${commande.numero}`,
+            createdAt: new Date().toISOString()
+        });
+    });
+    renderStockTabs();
+    renderArticleTables();
+    checkStockAlerts();
+    showToast("✅ Commande livrée. Stock mis à jour.", "success");
+};
+
+const exportStockCSV = () => {
+    ensureArticleStockFields();
+    const headers = ["code", "designation", "type", "familleNom", "fournisseur", "referenceInterne", "referenceFabricant", "marque", "prixUnitaire", "stockActuel", "stockMinimum", "stockCritique", "emplacementStock", "qteReapprovisionnement", "valeurTotale", "uniteMesure", "fournisseurId", "delaiReappro", "codeBarre", "dateDernierMouvement", "dateInventaire", "observations"];
+    const rows = articles.map((a) => headers.map((h) => `"${String(a[h] ?? "").replaceAll("\"", "\"\"")}"`).join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stock_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+const stockModals = {
+    entree: document.getElementById("modal-stock-entree"),
+    sortie: document.getElementById("modal-stock-sortie"),
+    ajustement: document.getElementById("modal-stock-ajustement"),
+    commande: document.getElementById("modal-commande-achat"),
+    fournisseur: document.getElementById("modal-fournisseur-form"),
+    fournisseurDetail: document.getElementById("modal-fournisseur-detail")
+};
+const bsStockEntreeModal = stockModals.entree && bootstrapAvailable ? new bootstrap.Modal(stockModals.entree) : null;
+const bsStockSortieModal = stockModals.sortie && bootstrapAvailable ? new bootstrap.Modal(stockModals.sortie) : null;
+const bsStockAjustementModal = stockModals.ajustement && bootstrapAvailable ? new bootstrap.Modal(stockModals.ajustement) : null;
+const bsCommandeModal = stockModals.commande && bootstrapAvailable ? new bootstrap.Modal(stockModals.commande) : null;
+const bsFournisseurModal = stockModals.fournisseur && bootstrapAvailable ? new bootstrap.Modal(stockModals.fournisseur) : null;
+const bsFournisseurDetailModal = stockModals.fournisseurDetail && bootstrapAvailable ? new bootstrap.Modal(stockModals.fournisseurDetail) : null;
+
+const populateStockSelects = () => {
+    const articleOptions = `<option value="">Sélectionner</option>${articles.map((a) => `<option value="${a.id}">${a.referenceInterne || a.code} - ${a.designation}</option>`).join("")}`;
+    const fournisseurOptions = `<option value="">Sélectionner</option>${fournisseurs.filter((f) => f.actif).map((f) => `<option value="${f.id}">${f.nom}</option>`).join("")}`;
+    ["entree-article", "sortie-article", "ajust-article"].forEach((id) => { const el = document.getElementById(id); if (el) el.innerHTML = articleOptions; });
+    ["entree-fournisseur", "cmd-fournisseur"].forEach((id) => { const el = document.getElementById(id); if (el) el.innerHTML = fournisseurOptions; });
+    const otSelect = document.getElementById("sortie-ot");
+    if (otSelect) otSelect.innerHTML = `<option value="">Aucun</option>${ordresDeTravail.map((ot) => `<option value="${ot.id}">${ot.numero}</option>`).join("")}`;
+    const btSelect = document.getElementById("sortie-bt");
+    if (btSelect) btSelect.innerHTML = `<option value="">Aucun</option>${bonsDeTravail.map((bt) => `<option value="${bt.id}" data-ot-id="${bt.otId}">${bt.numero}</option>`).join("")}`;
 };
 
 const renderField = (field, value, entityKey) => {
@@ -4485,6 +5001,9 @@ const navigateTo = (viewId) => {
         animateCounters();
         initCharts();
     }
+    if (viewId === "view-stock") {
+        renderStockTabs();
+    }
 
     if (window.innerWidth < 992) {
         closeOverlays();
@@ -4590,6 +5109,336 @@ document.addEventListener("click", (event) => {
             filterSelect.value = itemId;
         }
         renderTable(childEntity);
+    }
+});
+
+document.addEventListener("click", (event) => {
+    const filterBtn = event.target.closest("[data-stock-filter]");
+    if (filterBtn) {
+        stockState.articleFilter = filterBtn.dataset.stockFilter || "TOUS";
+        document.querySelectorAll("[data-stock-filter]").forEach((btn) => btn.classList.remove("active"));
+        filterBtn.classList.add("active");
+        renderStockArticlesTab();
+        return;
+    }
+    if (event.target.closest("#stock-export-btn")) {
+        exportStockCSV();
+        return;
+    }
+    if (event.target.closest("[data-stock-alert-view='ruptures']")) {
+        event.preventDefault();
+        stockState.articleFilter = "RUPTURE";
+        document.querySelectorAll("[data-stock-filter]").forEach((btn) => btn.classList.toggle("active", btn.dataset.stockFilter === "RUPTURE"));
+        renderStockArticlesTab();
+    }
+});
+
+document.addEventListener("input", (event) => {
+    if (event.target.id === "stock-article-search") {
+        stockState.articleSearch = event.target.value;
+        renderStockArticlesTab();
+    }
+    if (event.target.id === "stock-mvt-article") {
+        stockState.mvtArticle = event.target.value;
+        renderMouvementsTab();
+    }
+    if (event.target.id === "sortie-quantite") {
+        const articleId = document.getElementById("sortie-article")?.value;
+        const article = articles.find((a) => a.id === articleId);
+        const stock = Number(article?.stockActuel) || 0;
+        const qte = Number(event.target.value || 0);
+        const error = document.getElementById("sortie-error");
+        const btn = document.getElementById("sortie-submit-btn");
+        const invalid = qte > stock;
+        if (error) error.textContent = invalid ? "Quantité insuffisante en stock" : "";
+        if (btn) btn.disabled = invalid;
+    }
+    if (event.target.id === "entree-quantite" || event.target.id === "entree-article") {
+        const article = articles.find((a) => a.id === document.getElementById("entree-article")?.value);
+        const q = Number(document.getElementById("entree-quantite")?.value || 0);
+        const before = Number(article?.stockActuel) || 0;
+        const preview = document.getElementById("entree-preview");
+        if (preview) preview.textContent = `Stock actuel: ${before} → Après entrée: ${before} + ${q} = ${before + q}`;
+        if (article) {
+            const stockEl = document.getElementById("entree-stock-actuel");
+            const prixEl = document.getElementById("entree-prix");
+            const empEl = document.getElementById("entree-emplacement");
+            if (stockEl) stockEl.value = `${before}`;
+            if (prixEl) prixEl.value = `${Number(article.prixUnitaire) || 0}`;
+            if (empEl) empEl.value = article.emplacementStock || "";
+        }
+    }
+    if (event.target.id === "ajust-stock-nouveau" || event.target.id === "ajust-article") {
+        const article = articles.find((a) => a.id === document.getElementById("ajust-article")?.value);
+        const actuel = Number(article?.stockActuel) || 0;
+        const nouveau = Number(document.getElementById("ajust-stock-nouveau")?.value || 0);
+        const ecart = nouveau - actuel;
+        const actuelEl = document.getElementById("ajust-stock-actuel");
+        const ecartEl = document.getElementById("ajust-ecart");
+        if (actuelEl) actuelEl.value = `${actuel}`;
+        if (ecartEl) {
+            ecartEl.value = `${ecart}`;
+            ecartEl.classList.toggle("text-danger", ecart < 0);
+            ecartEl.classList.toggle("text-success", ecart > 0);
+        }
+    }
+    if (event.target.matches("[data-cmd-article], [data-cmd-qte], [data-cmd-prix]")) {
+        const row = event.target.closest("[data-cmd-line]");
+        if (!row) return;
+        const select = row.querySelector("[data-cmd-article]");
+        const prixInput = row.querySelector("[data-cmd-prix]");
+        if (event.target.matches("[data-cmd-article]")) {
+            const price = Number(select?.selectedOptions?.[0]?.dataset.prix || 0);
+            if (prixInput && !Number(prixInput.value)) prixInput.value = `${price}`;
+        }
+        const q = Number(row.querySelector("[data-cmd-qte]")?.value || 0);
+        const p = Number(prixInput?.value || 0);
+        const total = q * p;
+        const totalInput = row.querySelector("[data-cmd-total]");
+        if (totalInput) totalInput.value = total.toLocaleString("fr-FR");
+        const cmdTotal = Array.from(document.querySelectorAll("[data-cmd-line]")).reduce((sum, r) => {
+            const qq = Number(r.querySelector("[data-cmd-qte]")?.value || 0);
+            const pp = Number(r.querySelector("[data-cmd-prix]")?.value || 0);
+            return sum + (qq * pp);
+        }, 0);
+        const cmdTotalEl = document.getElementById("cmd-total");
+        if (cmdTotalEl) cmdTotalEl.textContent = cmdTotal.toLocaleString("fr-FR");
+    }
+});
+
+document.addEventListener("change", (event) => {
+    if (event.target.id === "stock-mvt-date-debut") { stockState.mvtDateDebut = event.target.value; renderMouvementsTab(); }
+    if (event.target.id === "stock-mvt-date-fin") { stockState.mvtDateFin = event.target.value; renderMouvementsTab(); }
+    if (event.target.id === "stock-mvt-type") { stockState.mvtType = event.target.value; renderMouvementsTab(); }
+    if (event.target.id === "sortie-ot") {
+        const otId = event.target.value;
+        const bt = document.getElementById("sortie-bt");
+        if (!bt) return;
+        Array.from(bt.options).forEach((opt) => { if (!opt.value) return; opt.hidden = Boolean(otId) && opt.dataset.otId !== otId; });
+        bt.value = "";
+    }
+});
+
+document.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-stock-action]");
+    if (!btn) return;
+    const action = btn.dataset.stockAction;
+    const id = btn.dataset.id;
+    const articleId = btn.dataset.articleId;
+
+    if (action === "open-entree") {
+        populateStockSelects();
+        const today = new Date().toISOString().slice(0, 10);
+        const article = articles.find((a) => a.id === articleId);
+        const articleSelect = document.getElementById("entree-article");
+        if (articleSelect && articleId) articleSelect.value = articleId;
+        if (article) {
+            const stock = Number(article.stockActuel) || 0;
+            const stockEl = document.getElementById("entree-stock-actuel");
+            const prixEl = document.getElementById("entree-prix");
+            const empEl = document.getElementById("entree-emplacement");
+            if (stockEl) stockEl.value = `${stock}`;
+            if (prixEl) prixEl.value = `${Number(article.prixUnitaire) || 0}`;
+            if (empEl) empEl.value = article.emplacementStock || "";
+        }
+        const dateEl = document.getElementById("entree-date");
+        if (dateEl) dateEl.value = today;
+        bsStockEntreeModal?.show();
+    }
+    if (action === "open-sortie") {
+        populateStockSelects();
+        const today = new Date().toISOString().slice(0, 10);
+        const article = articles.find((a) => a.id === articleId);
+        const articleSelect = document.getElementById("sortie-article");
+        if (articleSelect && articleId) articleSelect.value = articleId;
+        if (article) {
+            const stockEl = document.getElementById("sortie-stock-actuel");
+            const empEl = document.getElementById("sortie-emplacement");
+            const alertEl = document.getElementById("sortie-stock-alert");
+            if (stockEl) stockEl.value = `${Number(article.stockActuel) || 0}`;
+            if (empEl) empEl.value = article.emplacementStock || "";
+            if (alertEl) alertEl.textContent = (Number(article.stockActuel) || 0) <= (Number(article.stockMinimum) || 0) ? "Alerte: stock inférieur ou égal au minimum." : "";
+        }
+        const dateEl = document.getElementById("sortie-date");
+        if (dateEl) dateEl.value = today;
+        bsStockSortieModal?.show();
+    }
+    if (action === "open-mouvement") {
+        populateStockSelects();
+        bsStockAjustementModal?.show();
+    }
+    if (action === "save-entree") { saveEntreeStock(); bsStockEntreeModal?.hide(); }
+    if (action === "save-sortie") { saveSortieStock(); bsStockSortieModal?.hide(); }
+    if (action === "save-ajustement") { saveAjustementStock(); bsStockAjustementModal?.hide(); }
+    if (action === "new-commande") {
+        stockCommandeContextId = null;
+        populateStockSelects();
+        const n = document.getElementById("cmd-numero");
+        const d = document.getElementById("cmd-date");
+        const dl = document.getElementById("cmd-date-livraison");
+        const body = document.getElementById("cmd-lignes-body");
+        const today = new Date().toISOString().slice(0, 10);
+        if (n) n.value = generateBCNumber();
+        if (d) d.value = today;
+        if (dl) dl.value = today;
+        if (body) body.innerHTML = "";
+        bsCommandeModal?.show();
+    }
+    if ((action === "view-commande" || action === "edit-commande") && id) {
+        const cmd = commandesAchat.find((c) => c.id === id);
+        if (!cmd) return;
+        stockCommandeContextId = action === "edit-commande" ? id : null;
+        populateStockSelects();
+        const n = document.getElementById("cmd-numero");
+        const d = document.getElementById("cmd-date");
+        const dl = document.getElementById("cmd-date-livraison");
+        const o = document.getElementById("cmd-observation");
+        const f = document.getElementById("cmd-fournisseur");
+        const body = document.getElementById("cmd-lignes-body");
+        if (n) n.value = cmd.numero || "";
+        if (d) d.value = cmd.dateCommande || "";
+        if (dl) dl.value = cmd.dateLivraisonPrevue || "";
+        if (o) o.value = cmd.observations || "";
+        if (f) f.value = cmd.fournisseurId || "";
+        if (body) {
+            body.innerHTML = (cmd.lignes || []).map((l) => `<tr data-cmd-line>
+                <td><select class="form-select form-select-sm" data-cmd-article><option value="">Sélectionner</option>${articles.map((a) => `<option value="${a.id}" data-prix="${Number(a.prixUnitaire) || 0}" ${a.id === l.articleId ? "selected" : ""}>${a.referenceInterne || a.code} - ${a.designation}</option>`).join("")}</select></td>
+                <td><input class="form-control form-control-sm" type="number" min="1" value="${l.qtCommandee || 1}" data-cmd-qte></td>
+                <td><input class="form-control form-control-sm" type="number" min="0" value="${l.prixUnitaire || 0}" data-cmd-prix></td>
+                <td><input class="form-control form-control-sm" readonly data-cmd-total value="${(Number(l.totalLigne) || 0).toLocaleString("fr-FR")}"></td>
+                <td><button class="btn btn-outline-danger btn-sm" data-stock-action="remove-cmd-line">Supprimer</button></td>
+            </tr>`).join("");
+        }
+        bsCommandeModal?.show();
+    }
+    if (action === "add-cmd-line") {
+        const body = document.getElementById("cmd-lignes-body");
+        if (!body) return;
+        body.insertAdjacentHTML("beforeend", `<tr data-cmd-line>
+            <td><select class="form-select form-select-sm" data-cmd-article><option value="">Sélectionner</option>${articles.map((a) => `<option value="${a.id}" data-prix="${Number(a.prixUnitaire) || 0}">${a.referenceInterne || a.code} - ${a.designation}</option>`).join("")}</select></td>
+            <td><input class="form-control form-control-sm" type="number" min="1" value="1" data-cmd-qte></td>
+            <td><input class="form-control form-control-sm" type="number" min="0" value="0" data-cmd-prix></td>
+            <td><input class="form-control form-control-sm" readonly data-cmd-total></td>
+            <td><button class="btn btn-outline-danger btn-sm" data-stock-action="remove-cmd-line">Supprimer</button></td>
+        </tr>`);
+    }
+    if (action === "remove-cmd-line") {
+        const row = btn.closest("[data-cmd-line]");
+        row?.remove();
+    }
+    if (action === "save-commande" || action === "send-commande") {
+        const lignes = Array.from(document.querySelectorAll("[data-cmd-line]")).map((row) => {
+            const articleIdRow = row.querySelector("[data-cmd-article]")?.value;
+            const article = articles.find((a) => a.id === articleIdRow);
+            const qt = Number(row.querySelector("[data-cmd-qte]")?.value || 0);
+            const prix = Number(row.querySelector("[data-cmd-prix]")?.value || article?.prixUnitaire || 0);
+            return {
+                articleId: articleIdRow,
+                articleRef: article?.referenceInterne || article?.code || "",
+                articleNom: article?.designation || "",
+                qtCommandee: qt,
+                qtLivree: qt,
+                prixUnitaire: prix,
+                totalLigne: qt * prix
+            };
+        }).filter((l) => l.articleId);
+        const fournisseurId = document.getElementById("cmd-fournisseur")?.value;
+        const fournisseur = fournisseurs.find((f) => f.id === fournisseurId);
+        const cmd = {
+            id: stockCommandeContextId || createId(),
+            numero: document.getElementById("cmd-numero")?.value || generateBCNumber(),
+            fournisseurId,
+            fournisseurNom: fournisseur?.nom || "",
+            statut: action === "send-commande" ? "ENVOYEE" : "BROUILLON",
+            dateCommande: document.getElementById("cmd-date")?.value || "",
+            dateLivraisonPrevue: document.getElementById("cmd-date-livraison")?.value || "",
+            dateLivraisonReelle: "",
+            lignes,
+            montantTotal: lignes.reduce((s, l) => s + (Number(l.totalLigne) || 0), 0),
+            observations: document.getElementById("cmd-observation")?.value || "",
+            createdAt: new Date().toISOString()
+        };
+        if (stockCommandeContextId) {
+            const idx = commandesAchat.findIndex((c) => c.id === stockCommandeContextId);
+            if (idx >= 0) commandesAchat[idx] = { ...commandesAchat[idx], ...cmd };
+        } else {
+            commandesAchat.push(cmd);
+        }
+        stockCommandeContextId = null;
+        bsCommandeModal?.hide();
+        renderStockTabs();
+    }
+    if (action === "livrer-commande" && id) liverCommande(id);
+    if (action === "cancel-commande" && id) {
+        const cmd = commandesAchat.find((c) => c.id === id);
+        if (cmd) cmd.statut = "ANNULEE";
+        renderStockTabs();
+    }
+    if (action === "new-fournisseur") {
+        const title = document.getElementById("fournisseur-modal-title");
+        const idField = document.getElementById("fournisseur-id");
+        const code = document.getElementById("fournisseur-code");
+        if (title) title.textContent = "Nouveau fournisseur";
+        if (idField) idField.value = "";
+        if (code) code.value = generateFRNCode();
+        ["fournisseur-nom", "fournisseur-contact", "fournisseur-telephone", "fournisseur-email", "fournisseur-adresse", "fournisseur-delai"].forEach((x) => { const el = document.getElementById(x); if (el) el.value = ""; });
+        const actif = document.getElementById("fournisseur-actif"); if (actif) actif.checked = true;
+        bsFournisseurModal?.show();
+    }
+    if (action === "edit-fournisseur" && id) {
+        const f = fournisseurs.find((x) => x.id === id);
+        if (!f) return;
+        const title = document.getElementById("fournisseur-modal-title");
+        if (title) title.textContent = "Modifier fournisseur";
+        const map = { "fournisseur-id": f.id, "fournisseur-code": f.code, "fournisseur-nom": f.nom, "fournisseur-contact": f.contact, "fournisseur-telephone": f.telephone, "fournisseur-email": f.email, "fournisseur-adresse": f.adresse, "fournisseur-delai": f.delaiMoyen };
+        Object.entries(map).forEach(([k, v]) => { const el = document.getElementById(k); if (el) el.value = v ?? ""; });
+        const actif = document.getElementById("fournisseur-actif"); if (actif) actif.checked = Boolean(f.actif);
+        bsFournisseurModal?.show();
+    }
+    if (action === "save-fournisseur") {
+        const idValue = document.getElementById("fournisseur-id")?.value;
+        const payload = {
+            id: idValue || createId(),
+            code: (document.getElementById("fournisseur-code")?.value || generateFRNCode()).toUpperCase(),
+            nom: document.getElementById("fournisseur-nom")?.value || "",
+            contact: document.getElementById("fournisseur-contact")?.value || "",
+            telephone: document.getElementById("fournisseur-telephone")?.value || "",
+            email: document.getElementById("fournisseur-email")?.value || "",
+            adresse: document.getElementById("fournisseur-adresse")?.value || "",
+            delaiMoyen: Number(document.getElementById("fournisseur-delai")?.value || 0),
+            actif: Boolean(document.getElementById("fournisseur-actif")?.checked),
+            createdAt: new Date().toISOString()
+        };
+        if (idValue) {
+            const index = fournisseurs.findIndex((f) => f.id === idValue);
+            if (index >= 0) fournisseurs[index] = { ...fournisseurs[index], ...payload };
+        } else {
+            fournisseurs.push(payload);
+        }
+        bsFournisseurModal?.hide();
+        renderStockTabs();
+    }
+    if (action === "delete-fournisseur" && id) {
+        fournisseurs = fournisseurs.filter((f) => f.id !== id);
+        renderStockTabs();
+    }
+    if (action === "view-fournisseur" && id) {
+        const f = fournisseurs.find((x) => x.id === id);
+        const body = document.getElementById("fournisseur-detail-body");
+        if (!f || !body) return;
+        const linked = articles.filter((a) => a.fournisseurId === f.id);
+        body.innerHTML = `<div class="mb-2"><strong>${f.nom}</strong> (${f.code})</div><div class="mb-2">Contact: ${f.contact || "-"}</div><div class="mb-2">Téléphone: ${f.telephone || "-"}</div><div class="mb-3">Email: ${f.email || "-"}</div><h6>Articles liés</h6><ul>${linked.map((a) => `<li>${a.designation}</li>`).join("") || "<li>Aucun article lié</li>"}</ul>`;
+        bsFournisseurDetailModal?.show();
+    }
+    if (action === "prefill-commande" && articleId) {
+        document.querySelector("[data-stock-action='new-commande']")?.click();
+        setTimeout(() => {
+            document.querySelector("[data-stock-action='add-cmd-line']")?.click();
+            const row = document.querySelector("#cmd-lignes-body [data-cmd-line]");
+            const select = row?.querySelector("[data-cmd-article]");
+            if (select) select.value = articleId;
+            select?.dispatchEvent(new Event("change"));
+        }, 100);
     }
 });
 
@@ -5352,7 +6201,7 @@ let ordresDeTravail = [
         dateFinPrevue: "2026-05-02",
         technicien: "N. Slimani",
         techniciensSup: ["L. Hadj"],
-        statut: "VALIDÉ",
+        statut: "VALIDE",
         equipementId: "equip-1",
         equipementNom: "Compresseur principal",
         equipementCode: "CMP-501",
@@ -5461,11 +6310,35 @@ const btStatusMeta = {
     VALIDE: { label: "Validé", badgeClass: "bt-status-valide", icon: "fa-check-double" }
 };
 
-const otStatusMeta = {
-    PLANIFIE: "Planifié",
-    EN_COURS: "En cours",
-    VALIDE: "Validé",
-    CLOTURE: "Clôturé"
+const OT_STATUS = {
+    BROUILLON: { label: "Brouillon", badge: "secondary", icon: "fa-file" },
+    EN_ATTENTE: { label: "En attente", badge: "warning", icon: "fa-hourglass-half" },
+    VALIDE: { label: "Validé", badge: "primary", icon: "fa-check" },
+    EN_COURS: { label: "En cours", badge: "orange", icon: "fa-play" },
+    SUSPENDU: { label: "Suspendu", badge: "purple", icon: "fa-pause" },
+    TERMINE: { label: "Terminé", badge: "teal", icon: "fa-flag-checkered" },
+    CLOTURE: { label: "Clôturé", badge: "success", icon: "fa-lock" },
+    ANNULE: { label: "Annulé", badge: "danger", icon: "fa-times" }
+};
+
+const normalizeOTStatus = (status) => {
+    const migration = {
+        "VALIDÉ": "VALIDE",
+        Planifié: "EN_ATTENTE",
+        PLANIFIE: "EN_ATTENTE",
+        "CLÔTURÉ": "CLOTURE"
+    };
+    return migration[status] ?? status ?? "BROUILLON";
+};
+
+const getOTStatusMeta = (status) => OT_STATUS[normalizeOTStatus(status)] ?? OT_STATUS.BROUILLON;
+
+const renderOTStatusBadge = (status) => {
+    const key = normalizeOTStatus(status);
+    const meta = getOTStatusMeta(key);
+    const fallback = { orange: "warning text-dark", purple: "secondary", teal: "info text-dark" };
+    const badgeClass = fallback[meta.badge] ?? (meta.badge.startsWith("bg-") ? meta.badge : `bg-${meta.badge}`);
+    return `<span class="badge ${badgeClass}"><i class="fa-solid ${meta.icon} me-1"></i>${meta.label}</span>`;
 };
 
 const otDetailModalElement = document.getElementById("modal-ot-detail");
@@ -5473,16 +6346,29 @@ const btGenerateModalElement = document.getElementById("modal-bt-generate");
 const btDetailModalElement = document.getElementById("modal-bt-detail");
 const btValidateModalElement = document.getElementById("modal-bt-validate");
 const btPrintModalElement = document.getElementById("modal-bt-print");
+const otValidateModalElement = document.getElementById("modal-ot-validate");
+const otStartModalElement = document.getElementById("modal-ot-start");
+const otSuspendModalElement = document.getElementById("modal-ot-suspend");
+const otFinishModalElement = document.getElementById("modal-ot-finish");
+const otCloseModalElement = document.getElementById("modal-ot-close");
+const otCancelModalElement = document.getElementById("modal-ot-cancel");
 const btGenerateModal = btGenerateModalElement && bootstrapAvailable ? new bootstrap.Modal(btGenerateModalElement) : null;
 const btDetailModal = btDetailModalElement && bootstrapAvailable ? new bootstrap.Modal(btDetailModalElement) : null;
 const btValidateModal = btValidateModalElement && bootstrapAvailable ? new bootstrap.Modal(btValidateModalElement) : null;
 const btPrintModal = btPrintModalElement && bootstrapAvailable ? new bootstrap.Modal(btPrintModalElement) : null;
 const otDetailModal = otDetailModalElement && bootstrapAvailable ? new bootstrap.Modal(otDetailModalElement) : null;
+const otValidateModal = otValidateModalElement && bootstrapAvailable ? new bootstrap.Modal(otValidateModalElement) : null;
+const otStartModal = otStartModalElement && bootstrapAvailable ? new bootstrap.Modal(otStartModalElement) : null;
+const otSuspendModal = otSuspendModalElement && bootstrapAvailable ? new bootstrap.Modal(otSuspendModalElement) : null;
+const otFinishModal = otFinishModalElement && bootstrapAvailable ? new bootstrap.Modal(otFinishModalElement) : null;
+const otCloseModal = otCloseModalElement && bootstrapAvailable ? new bootstrap.Modal(otCloseModalElement) : null;
+const otCancelModal = otCancelModalElement && bootstrapAvailable ? new bootstrap.Modal(otCancelModalElement) : null;
 const btPrintable = document.getElementById("bt-printable");
 
 let btGenerateContext = null;
 let btDetailContext = null;
 let btValidateContext = null;
+let otTransitionContext = null;
 
 let diFormContext = null;
 let diExamenContext = null;
@@ -5500,6 +6386,23 @@ const getNextSequence = (items, prefix) => {
         .filter((value) => !Number.isNaN(value));
     const next = (sequences.length ? Math.max(...sequences) : 0) + 1;
     return `${prefix}-${currentYear}-${next.toString().padStart(4, "0")}`;
+};
+
+const generateOTNumber = () => {
+    const index = ordresDeTravail.length + 1;
+    return `OT-${new Date().getFullYear()}-${String(index).padStart(4, "0")}`;
+};
+
+const addOTHistory = (otId, action, commentaire = "") => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot) return;
+    if (!ot.historique) ot.historique = [];
+    ot.historique.push({
+        action,
+        utilisateur: diUser?.name ?? "Système",
+        date: new Date().toISOString(),
+        commentaire
+    });
 };
 
 const getEquipmentById = (equipmentId) => equipment.find((item) => item.id === equipmentId) ?? null;
@@ -5610,7 +6513,10 @@ const renderDiTable = () => {
     tableBody.innerHTML = items
         .map((di) => `
             <tr>
-                <td>${di.numero}</td>
+                <td>
+                    <div>${di.numero}</div>
+                    ${di.statut === "CONVERTIE_EN_OT" && di.otCreeeNumero ? `<a href="#" class="badge bg-primary text-decoration-none" data-di-ot-link data-di-ot-id="${di.otCreeeId}">→ Voir OT: ${di.otCreeeNumero}</a>` : ""}
+                </td>
                 <td>${di.titre}</td>
                 <td>${di.equipementNom || "-"}</td>
                 <td>${renderDiUrgenceBadge(di.urgence)}</td>
@@ -5634,6 +6540,7 @@ const renderOtTable = () => {
         tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Aucun ordre de travail.</td></tr>`;
         return;
     }
+    ordresDeTravail.forEach((ot) => { ot.statut = normalizeOTStatus(ot.statut); });
 
     tableBody.innerHTML = ordresDeTravail
         .map((ot) => `
@@ -5643,7 +6550,7 @@ const renderOtTable = () => {
                 <td>${ot.equipementNom || "-"}</td>
                 <td>${renderDiUrgenceBadge(ot.priorite)}</td>
                 <td>${ot.technicien || "-"}</td>
-                <td><span class="badge bg-primary">${ot.statut || "Planifié"}</span></td>
+                <td>${renderOTStatusBadge(ot.statut)}</td>
                 <td>${ot.dateDebutPrevue || "-"} → ${ot.dateFinPrevue || "-"}</td>
                 <td>
                     <div class="d-flex gap-1">
@@ -5756,22 +6663,20 @@ const populateBtTechnicienFilter = () => {
 };
 
 const buildOtDetailBody = (ot) => {
-    const btAssocies = bonsDeTravail.filter((bt) => bt.otId === ot.id);
-    const canGenerate = ot.statut === "VALIDÉ" && !btAssocies.some((bt) => bt.statut !== "VALIDE");
-    const btRows = btAssocies.length
-        ? btAssocies
+    const statut = normalizeOTStatus(ot.statut);
+    const linkedBTs = bonsDeTravail.filter((bt) => bt.otId === ot.id);
+    const btRows = linkedBTs.length
+        ? linkedBTs
             .map((bt) => `
                 <tr>
                     <td>${bt.numero}</td>
                     <td>${renderBtStatusBadge(bt.statut)}</td>
                     <td>${bt.technicienPrincipal || "-"}</td>
                     <td>${bt.dateGeneration || "-"}</td>
-                    <td>
-                        <button class="btn btn-outline-secondary btn-sm" data-bt-action="detail" data-bt-id="${bt.id}"><i class="fa-solid fa-eye"></i></button>
-                    </td>
+                    <td><button class="btn btn-outline-secondary btn-sm" data-bt-action="detail" data-bt-id="${bt.id}"><i class="fa-solid fa-eye"></i></button></td>
                 </tr>`)
             .join("")
-        : `<tr><td colspan="5" class="text-center text-muted">Aucun bon de travail associé.</td></tr>`;
+        : `<tr><td colspan="5" class="text-center text-muted">Aucun bon de travail lié.</td></tr>`;
 
     const piecesRows = (ot.piecesAttendu ?? [])
         .map((piece) => `
@@ -5788,9 +6693,19 @@ const buildOtDetailBody = (ot) => {
             <div class="d-flex flex-wrap gap-2">
                 <span class="badge bg-dark">${ot.numero}</span>
                 ${renderDiUrgenceBadge(ot.priorite)}
-                <span class="badge bg-primary">${ot.statut}</span>
+                ${renderOTStatusBadge(statut)}
             </div>
             <h4 class="fw-bold mt-2">${ot.titre}</h4>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                ${statut === "EN_ATTENTE" ? `<button class="btn btn-primary btn-sm" data-ot-action="validate" data-ot-id="${ot.id}">Valider</button>` : ""}
+                ${statut === "VALIDE" ? `<button class="btn btn-warning btn-sm" data-ot-action="start" data-ot-id="${ot.id}">Démarrer</button>` : ""}
+                ${statut === "VALIDE" ? `<button class="btn btn-outline-primary btn-sm" data-bt-action="generate" data-ot-id="${ot.id}"><i class="fa-solid fa-file-alt me-1"></i>Générer BT</button>` : ""}
+                ${statut === "EN_COURS" ? `<button class="btn btn-secondary btn-sm" data-ot-action="suspend" data-ot-id="${ot.id}">Suspendre</button>` : ""}
+                ${statut === "EN_COURS" ? `<button class="btn btn-info btn-sm" data-ot-action="finish" data-ot-id="${ot.id}">Terminer</button>` : ""}
+                ${statut === "SUSPENDU" ? `<button class="btn btn-warning btn-sm" data-ot-action="resume" data-ot-id="${ot.id}">Reprendre</button>` : ""}
+                ${statut === "TERMINE" ? `<button class="btn btn-success btn-sm" data-ot-action="close" data-ot-id="${ot.id}">Clôturer</button>` : ""}
+                ${statut !== "CLOTURE" && statut !== "ANNULE" ? `<button class="btn btn-outline-secondary btn-sm" data-ot-action="cancel" data-ot-id="${ot.id}">Annuler</button>` : ""}
+            </div>
         </div>
         <div class="row g-4">
             <div class="col-lg-6">
@@ -5820,10 +6735,7 @@ const buildOtDetailBody = (ot) => {
             </div>
         </div>
         <div class="mt-4">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="fw-semibold">Bons de Travail associés</div>
-                ${canGenerate ? `<button class="btn btn-outline-primary btn-sm" data-bt-action="generate" data-ot-id="${ot.id}"><i class="fa-solid fa-file-alt me-2"></i>Générer un BT</button>` : ""}
-            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2"><div class="fw-semibold">Bons de Travail liés</div></div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle">
                     <thead>
@@ -5838,6 +6750,7 @@ const buildOtDetailBody = (ot) => {
                     <tbody>${btRows}</tbody>
                 </table>
             </div>
+            ${!linkedBTs.length && statut === "VALIDE" ? `<div class="text-muted mt-2">Aucun BT généré — <button class="btn btn-link p-0 align-baseline" data-bt-action="generate" data-ot-id="${ot.id}">Générer un BT</button></div>` : ""}
         </div>`;
 };
 
@@ -5852,6 +6765,213 @@ const openOtDetailModal = (otId) => {
     otDetailModal?.show();
 };
 
+const openOtDetail = (otId) => {
+    openOtDetailModal(otId);
+};
+
+const refreshOtDetailIfOpen = (otId) => {
+    if (otDetailModalElement?.classList.contains("show")) {
+        openOtDetailModal(otId);
+    }
+};
+
+const validateOT = (otId, commentaire, dateDebut) => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot || normalizeOTStatus(ot.statut) !== "EN_ATTENTE") return;
+    ot.statut = "VALIDE";
+    if (dateDebut) ot.dateDebutPrevue = dateDebut;
+    addOTHistory(otId, "Validé", commentaire || "");
+    renderOTTable();
+    refreshOtDetailIfOpen(otId);
+    showToast("✅ OT validé", "success");
+};
+
+const startOT = (otId, dateReelleDebut, heureDebut, observations) => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot || normalizeOTStatus(ot.statut) !== "VALIDE") return;
+    ot.statut = "EN_COURS";
+    ot.dateReelleDebut = dateReelleDebut || "";
+    ot.heureReelleDebut = heureDebut || "";
+    addOTHistory(otId, "Démarré", observations || "");
+    renderOTTable();
+    refreshOtDetailIfOpen(otId);
+    showToast("▶️ Intervention démarrée", "success");
+};
+
+const suspendOT = (otId, motif) => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot || normalizeOTStatus(ot.statut) !== "EN_COURS") return;
+    ot.statut = "SUSPENDU";
+    addOTHistory(otId, `Suspendu — ${motif}`, motif || "");
+    renderOTTable();
+    refreshOtDetailIfOpen(otId);
+    showToast("⏸️ OT suspendu", "warning");
+};
+
+const resumeOT = (otId, commentaire = "") => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot || normalizeOTStatus(ot.statut) !== "SUSPENDU") return;
+    ot.statut = "EN_COURS";
+    addOTHistory(otId, "Repris", commentaire);
+    renderOTTable();
+    refreshOtDetailIfOpen(otId);
+    showToast("▶️ Intervention reprise", "success");
+};
+
+const finishOT = (otId, dateReelleFin, dureeReelle, travauxEffectues, resultat) => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot || normalizeOTStatus(ot.statut) !== "EN_COURS") return;
+    ot.statut = "TERMINE";
+    ot.dateReelleFin = dateReelleFin || "";
+    ot.dureeReelle = dureeReelle || "";
+    ot.travauxEffectues = travauxEffectues || "";
+    ot.resultat = resultat || "";
+    addOTHistory(otId, `Terminé — ${resultat || ""}`, travauxEffectues || "");
+    renderOTTable();
+    refreshOtDetailIfOpen(otId);
+    showToast("🏁 Intervention terminée", "info");
+};
+
+const closeOT = (otId, piecesConsommees, coutMOReel, rapport, recommandations, nouveauStatutEquipement) => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot || normalizeOTStatus(ot.statut) !== "TERMINE") return;
+    ot.statut = "CLOTURE";
+    ot.piecesConsommees = piecesConsommees;
+    ot.coutMOReel = coutMOReel;
+    ot.rapportCloture = rapport;
+    ot.recommandations = recommandations;
+    ot.nouveauStatutEquipement = nouveauStatutEquipement;
+
+    (piecesConsommees || []).forEach((piece) => {
+        const article = articles.find((a) => a.id === piece.articleId);
+        if (!article) return;
+        const qteBefore = Number(article.stockActuel) || 0;
+        const qte = Number(piece.qteReelle ?? 0);
+        article.stockActuel = Math.max(0, qteBefore - qte);
+        article.dateDernierMouvement = new Date().toISOString();
+        mouvementsStock.push({
+            id: createId(),
+            articleId: article.id,
+            articleDesignation: article.designation,
+            articleRef: article.referenceInterne,
+            type: "SORTIE",
+            motif: "UTILISATION_OT",
+            quantite: qte,
+            quantiteAvant: qteBefore,
+            quantiteApres: article.stockActuel,
+            prixUnitaire: article.prixUnitaire ?? 0,
+            valeurMouvement: qte * (article.prixUnitaire ?? 0),
+            otId: ot.id,
+            otNumero: ot.numero,
+            btId: null,
+            btNumero: null,
+            fournisseurId: null,
+            fournisseurNom: null,
+            dateMouvement: new Date().toISOString(),
+            saisiPar: diUser?.name ?? "Système",
+            observation: `Clôture OT ${ot.numero}`,
+            createdAt: new Date().toISOString()
+        });
+        if (article.stockActuel === 0) showToast(`⚠️ Rupture de stock: ${article.designation}`, "warning");
+    });
+
+    if (nouveauStatutEquipement) {
+        const equip = (equipements || []).find((e) => e.id === ot.equipementId);
+        if (equip) equip.statut = nouveauStatutEquipement;
+    }
+
+    if (ot.typeMaintenance?.startsWith("MC")) {
+        autoCreatePanneFromOT(ot);
+    }
+
+    addOTHistory(otId, "Clôturé", rapport);
+    renderOTTable();
+    renderEquipTables();
+    if (typeof renderArticleTables === "function") renderArticleTables();
+    if (typeof renderStockTabs === "function") renderStockTabs();
+    if (typeof checkStockAlerts === "function") checkStockAlerts();
+    refreshOtDetailIfOpen(otId);
+    showToast("🔒 OT clôturé. Stock mis à jour.", "success");
+};
+
+const cancelOT = (otId, motif) => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot) return;
+    if (normalizeOTStatus(ot.statut) === "CLOTURE") return;
+    ot.statut = "ANNULE";
+    addOTHistory(otId, `Annulé — ${motif}`, motif || "");
+    renderOTTable();
+    refreshOtDetailIfOpen(otId);
+    showToast("❌ OT annulé", "danger");
+};
+
+const openOtTransitionModal = (type, otId) => {
+    const ot = ordresDeTravail.find((o) => o.id === otId);
+    if (!ot) return;
+    otTransitionContext = { otId };
+    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date().toTimeString().slice(0, 5);
+    if (type === "validate") {
+        const dateInput = document.getElementById("ot-validate-date");
+        const comment = document.getElementById("ot-validate-comment");
+        if (dateInput) dateInput.value = ot.dateDebutPrevue || today;
+        if (comment) comment.value = "";
+        otValidateModal?.show();
+    }
+    if (type === "start") {
+        const dateInput = document.getElementById("ot-start-date");
+        const timeInput = document.getElementById("ot-start-time");
+        const obsInput = document.getElementById("ot-start-observations");
+        if (dateInput) dateInput.value = today;
+        if (timeInput) timeInput.value = now;
+        if (obsInput) obsInput.value = "";
+        otStartModal?.show();
+    }
+    if (type === "suspend") {
+        const motifInput = document.getElementById("ot-suspend-motif");
+        if (motifInput) motifInput.value = "";
+        otSuspendModal?.show();
+    }
+    if (type === "finish") {
+        const dateInput = document.getElementById("ot-finish-date");
+        const timeInput = document.getElementById("ot-finish-time");
+        const dureeInput = document.getElementById("ot-finish-duree");
+        const travauxInput = document.getElementById("ot-finish-travaux");
+        if (dateInput) dateInput.value = today;
+        if (timeInput) timeInput.value = now;
+        if (dureeInput) dureeInput.value = "";
+        if (travauxInput) travauxInput.value = "";
+        otFinishModalElement?.querySelectorAll("[name='ot-finish-resultat']").forEach((radio, index) => { radio.checked = index === 0; });
+        otFinishModal?.show();
+    }
+    if (type === "close") {
+        const body = document.getElementById("ot-close-pieces-body");
+        const closePrefill = ot.closePrefill || {};
+        const sourcePieces = (closePrefill.piecesConsommees?.length ? closePrefill.piecesConsommees : ot.piecesAttendu) || [];
+        if (body) {
+            body.innerHTML = sourcePieces.map((piece) => `
+                <tr data-ot-close-piece-row="${piece.articleId || ""}">
+                    <td>${piece.nom || "-"}</td>
+                    <td>${piece.ref || "-"}</td>
+                    <td>${piece.qtePrevue ?? 0}</td>
+                    <td><input class="form-control form-control-sm" type="number" min="0" value="${piece.qteReelle ?? piece.qtePrevue ?? 0}" data-ot-close-piece-qte></td>
+                </tr>`).join("") || `<tr><td colspan="4" class="text-center text-muted">Aucune pièce.</td></tr>`;
+        }
+        const coutMO = document.getElementById("ot-close-cout-mo");
+        const rapport = document.getElementById("ot-close-rapport");
+        const recommandations = document.getElementById("ot-close-recommandations");
+        if (coutMO) coutMO.value = ot.coutMOReel || "";
+        if (rapport) rapport.value = ot.rapportCloture || closePrefill.travauxEffectues || "";
+        if (recommandations) recommandations.value = ot.recommandations || "";
+        otCloseModal?.show();
+    }
+    if (type === "cancel") {
+        const motifInput = document.getElementById("ot-cancel-motif");
+        if (motifInput) motifInput.value = "";
+        otCancelModal?.show();
+    }
+};
+
 const buildBtSummaryCard = (ot) => `
     <div class="d-flex flex-column gap-1">
         <div class="fw-semibold">${ot.numero} | ${ot.titre}</div>
@@ -5864,6 +6984,10 @@ const openBtGenerateModal = (otId) => {
     const ot = ordresDeTravail.find((entry) => entry.id === otId);
     const form = document.getElementById("form-bt-generate");
     if (!ot || !form) {
+        return;
+    }
+    if (normalizeOTStatus(ot.statut) !== "VALIDE") {
+        showToast("Validez l'OT avant de générer un BT.", "warning");
         return;
     }
 
@@ -5893,6 +7017,10 @@ const generateBT = () => {
 
     const ot = ordresDeTravail.find((entry) => entry.id === btGenerateContext.otId);
     if (!ot) {
+        return;
+    }
+    if (normalizeOTStatus(ot.statut) !== "VALIDE") {
+        showToast("OT non validé. Génération BT indisponible.", "warning");
         return;
     }
 
@@ -5947,6 +7075,8 @@ const generateBT = () => {
     };
 
     bonsDeTravail.unshift(bt);
+    if (!ot.btIds) ot.btIds = [];
+    ot.btIds.push(bt.id);
     ot.historique ??= [];
     ot.historique.push({ action: `BT ${bt.numero} généré`, utilisateur: diUser.name, date: new Date().toISOString(), commentaire: "" });
 
@@ -6466,6 +7596,12 @@ const printBT = (btId) => {
     btPrintModal?.show();
 };
 
+const openBtPrintModal = (btId) => {
+    const bt = bonsDeTravail.find((b) => b.id === btId);
+    if (!bt) return;
+    printBT(bt.id);
+};
+
 const updateUrgencyCards = (group) => {
     if (!group) {
         return;
@@ -6821,7 +7957,7 @@ const openDiDetailModal = (diId) => {
     const documents = (di.documents ?? []).map((doc) => `<li><i class="fa-solid fa-paperclip me-2"></i>${doc.nom}</li>`).join("") || "<li>Aucun document</li>";
 
     const otLink = di.otCreeeNumero
-        ? `<a href="#" data-di-ot-link>→ ${di.otCreeeNumero}: ${ordresDeTravail.find((ot) => ot.id === di.otCreeeId)?.titre ?? "Ordre de travail"}</a>`
+        ? `<a href="#" data-di-ot-link data-di-ot-id="${di.otCreeeId}">→ Voir OT: ${di.otCreeeNumero}</a>`
         : "-";
 
     const historyItems = (di.historique ?? []).map((item) => `
@@ -6922,39 +8058,64 @@ const confirmDiOtCreation = () => {
         return;
     }
 
-    const numero = form.querySelector("[data-di-ot-field='numero']").value;
-    const titre = form.querySelector("[data-di-ot-field='titre']").value;
-    const typeMaintenance = form.querySelector("[data-di-ot-field='typeMaintenance']").value;
-    const priorite = form.querySelector("[data-di-ot-field='priorite']").value;
-    const dateDebut = form.querySelector("[data-di-ot-field='dateDebut']").value;
-    const dateFin = form.querySelector("[data-di-ot-field='dateFin']").value;
-    const technicien = form.querySelector("[data-di-ot-field='technicien']").value;
-
-    const ot = {
-        id: createId(),
-        numero,
-        titre,
-        typeMaintenance,
-        priorite,
-        dateDebutPrevue: dateDebut,
-        dateFinPrevue: dateFin,
-        technicien,
-        statut: "Planifié",
-        equipementNom: di.equipementNom,
-        diOrigineId: di.id
+    const formValues = {
+        typeMaintenance: form.querySelector("[data-di-ot-field='typeMaintenance']")?.value,
+        dateDebutPrevue: form.querySelector("[data-di-ot-field='dateDebut']")?.value,
+        dateFinPrevue: form.querySelector("[data-di-ot-field='dateFin']")?.value,
+        dureeEstimee: "",
+        dureeEstimeeUnite: "Heures",
+        technicien: form.querySelector("[data-di-ot-field='technicien']")?.value
     };
 
-    ordresDeTravail.unshift(ot);
+    const newOT = {
+        id: createId(),
+        numero: generateOTNumber(),
+        titre: di.titre,
+        typeMaintenance: formValues.typeMaintenance ?? "MC-Corrective",
+        priorite: di.urgence,
+        statut: "EN_ATTENTE",
+        diOrigineId: di.id,
+        diOrigineNumero: di.numero,
+        equipementId: di.equipementId,
+        equipementNom: di.equipementNom,
+        equipementCode: di.equipementCode,
+        organeId: di.organeId ?? "",
+        organeNom: di.organeNom ?? "",
+        description: di.description,
+        symptomes: di.symptomes,
+        problemConstate: di.description,
+        arretProduction: di.disponibiliteEquipement === "ARRET_TOTAL" ? "TOTAL" : di.disponibiliteEquipement === "DEGRADE" ? "PARTIEL" : "NON",
+        dateDebutPrevue: formValues.dateDebutPrevue ?? "",
+        dateFinPrevue: formValues.dateFinPrevue ?? "",
+        dureeEstimee: formValues.dureeEstimee ?? "",
+        dureeEstimeeUnite: formValues.dureeEstimeeUnite ?? "Heures",
+        technicien: formValues.technicien ?? "",
+        techniciensSup: [],
+        piecesAttendu: [],
+        coutMOEstime: "",
+        localisation: di.equipementCode ?? "",
+        criticite: "",
+        historique: [{
+            action: "Créé depuis DI",
+            utilisateur: diUser?.name ?? "Système",
+            date: new Date().toISOString(),
+            commentaire: `Converti depuis ${di.numero}`
+        }],
+        btIds: [],
+        createdAt: new Date().toISOString()
+    };
+
+    ordresDeTravail.push(newOT);
     di.statut = "CONVERTIE_EN_OT";
-    di.otCreeeId = ot.id;
-    di.otCreeeNumero = ot.numero;
-    di.historique.push({ action: "OT créé", utilisateur: diUser.name, date: new Date().toISOString(), commentaire: ot.numero });
+    di.otCreeeId = newOT.id;
+    di.otCreeeNumero = newOT.numero;
+    di.historique.push({ action: "OT créé", utilisateur: diUser.name, date: new Date().toISOString(), commentaire: newOT.numero });
 
     renderDiTable();
     renderOtTable();
     diOtModal?.hide();
     navigateTo("view-workorders");
-    showToast(`✅ ${ot.numero} créé avec succès depuis ${di.numero}`, "success");
+    showToast(`✅ ${newOT.numero} créé avec succès depuis ${di.numero}`, "success");
 };
 
 const archiveDi = (diId) => {
@@ -7107,10 +8268,15 @@ document.addEventListener("change", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-    if (event.target.matches("[data-di-ot-link]")) {
-        event.preventDefault();
-        navigateTo("view-workorders");
-    }
+    const link = event.target.closest("[data-di-ot-link]");
+    if (!link) return;
+    event.preventDefault();
+    const otId = link.dataset.diOtId;
+    navigateTo("view-workorders");
+    setTimeout(() => {
+        const ot = ordresDeTravail.find((o) => o.id === otId);
+        if (ot) openOtDetail(ot.id);
+    }, 100);
 });
 
 document.addEventListener("click", (event) => {
@@ -7123,6 +8289,93 @@ document.addEventListener("click", (event) => {
     const otId = target.dataset.otId;
     if (action === "detail" && otId) {
         openOtDetailModal(otId);
+    }
+    if (action === "validate" && otId) openOtTransitionModal("validate", otId);
+    if (action === "start" && otId) openOtTransitionModal("start", otId);
+    if (action === "suspend" && otId) openOtTransitionModal("suspend", otId);
+    if (action === "finish" && otId) openOtTransitionModal("finish", otId);
+    if (action === "close" && otId) openOtTransitionModal("close", otId);
+    if (action === "cancel" && otId) openOtTransitionModal("cancel", otId);
+    if (action === "resume" && otId) resumeOT(otId, "");
+    if (action === "validate-confirm" && otTransitionContext?.otId) {
+        validateOT(
+            otTransitionContext.otId,
+            document.getElementById("ot-validate-comment")?.value ?? "",
+            document.getElementById("ot-validate-date")?.value ?? ""
+        );
+        otValidateModal?.hide();
+    }
+    if (action === "start-confirm" && otTransitionContext?.otId) {
+        startOT(
+            otTransitionContext.otId,
+            document.getElementById("ot-start-date")?.value ?? "",
+            document.getElementById("ot-start-time")?.value ?? "",
+            document.getElementById("ot-start-observations")?.value ?? ""
+        );
+        otStartModal?.hide();
+    }
+    if (action === "suspend-suggestion") {
+        const value = target.dataset.value ?? "";
+        const field = document.getElementById("ot-suspend-motif");
+        if (field) field.value = value;
+    }
+    if (action === "suspend-confirm" && otTransitionContext?.otId) {
+        const motif = document.getElementById("ot-suspend-motif")?.value ?? "";
+        if (!motif.trim()) {
+            showToast("Motif requis.", "warning");
+            return;
+        }
+        suspendOT(otTransitionContext.otId, motif);
+        otSuspendModal?.hide();
+    }
+    if (action === "finish-confirm" && otTransitionContext?.otId) {
+        const date = document.getElementById("ot-finish-date")?.value ?? "";
+        const time = document.getElementById("ot-finish-time")?.value ?? "";
+        const duree = `${document.getElementById("ot-finish-duree")?.value ?? ""} ${document.getElementById("ot-finish-duree-unite")?.value ?? "Heures"}`.trim();
+        const travaux = document.getElementById("ot-finish-travaux")?.value ?? "";
+        const resultat = otFinishModalElement?.querySelector("[name='ot-finish-resultat']:checked")?.value ?? "";
+        if (!date || !time || !travaux.trim()) {
+            showToast("Date, heure et travaux sont requis.", "warning");
+            return;
+        }
+        finishOT(otTransitionContext.otId, `${date} ${time}`, duree, travaux, resultat);
+        otFinishModal?.hide();
+    }
+    if (action === "close-confirm" && otTransitionContext?.otId) {
+        const rapport = document.getElementById("ot-close-rapport")?.value ?? "";
+        if (!rapport.trim()) {
+            showToast("Rapport final requis.", "warning");
+            return;
+        }
+        const piecesConsommees = Array.from(document.querySelectorAll("[data-ot-close-piece-row]")).map((row) => {
+            const piece = ordresDeTravail.find((o) => o.id === otTransitionContext.otId)?.piecesAttendu?.find((p) => p.articleId === row.dataset.otClosePieceRow);
+            return {
+                articleId: row.dataset.otClosePieceRow,
+                nom: piece?.nom ?? row.children[0]?.textContent?.trim() ?? "",
+                ref: piece?.ref ?? row.children[1]?.textContent?.trim() ?? "",
+                qtePrevue: Number(piece?.qtePrevue ?? row.children[2]?.textContent ?? 0),
+                qteReelle: Number(row.querySelector("[data-ot-close-piece-qte]")?.value ?? 0),
+                unite: piece?.unite ?? ""
+            };
+        });
+        closeOT(
+            otTransitionContext.otId,
+            piecesConsommees,
+            Number(document.getElementById("ot-close-cout-mo")?.value ?? 0),
+            rapport,
+            document.getElementById("ot-close-recommandations")?.value ?? "",
+            document.getElementById("ot-close-equipement-statut")?.value ?? ""
+        );
+        otCloseModal?.hide();
+    }
+    if (action === "cancel-confirm" && otTransitionContext?.otId) {
+        const motif = document.getElementById("ot-cancel-motif")?.value ?? "";
+        if (!motif.trim()) {
+            showToast("Motif d'annulation requis.", "warning");
+            return;
+        }
+        cancelOT(otTransitionContext.otId, motif);
+        otCancelModal?.hide();
     }
 });
 
@@ -7340,6 +8593,740 @@ const initBootstrap = () => {
     });
 };
 
+function openQuickCreateModal(type) {
+    const configs = {
+        "groupe-equip": {
+            title: "Nouveau Groupe Équipement",
+            prefix: "GRP-EQ",
+            array: groupesEquipements,
+            targetSelect: "[data-equip-group='equipements']",
+            showParent: false
+        },
+        "famille-equip": {
+            title: "Nouvelle Famille Équipement",
+            prefix: "FAM-EQ",
+            array: famillesEquipements,
+            targetSelect: "[data-equip-family='equipements']",
+            showParent: true,
+            parentLabel: "Groupe",
+            parentSelectSelector: "[data-equip-group='equipements']",
+            parentArray: groupesEquipements,
+            parentKey: "groupeId"
+        },
+        "sousfamille-equip": {
+            title: "Nouvelle Sous-famille Équipement",
+            prefix: "SFA-EQ",
+            array: sousFamillesEquipements,
+            targetSelect: "[data-equip-subfamily='equipements']",
+            showParent: true,
+            parentLabel: "Famille",
+            parentSelectSelector: "[data-equip-family='equipements']",
+            parentArray: famillesEquipements,
+            parentKey: "familleId"
+        }
+    };
+
+    const cfg = configs[type];
+    if (!cfg) return;
+
+    window._quickCreateConfig = cfg;
+    document.getElementById("quickCreateTitle").textContent = cfg.title;
+    const nextNum = String(cfg.array.length + 1).padStart(4, "0");
+    document.getElementById("quickCreateCode").value = `${cfg.prefix}-${nextNum}`;
+    document.getElementById("quickCreateNom").value = "";
+    document.getElementById("quickCreateNom").classList.remove("is-invalid");
+
+    const parentRow = document.getElementById("quickCreateParentRow");
+    if (cfg.showParent && parentRow) {
+        const parentSelect = document.querySelector(cfg.parentSelectSelector);
+        const parentId = parentSelect?.value;
+        const parentItem = cfg.parentArray.find((item) => item.id === parentId);
+        if (parentItem) {
+            document.getElementById("quickCreateParentLabel").textContent = `${cfg.parentLabel}: ${parentItem.nom}`;
+            parentRow.style.display = "block";
+        } else {
+            parentRow.style.display = "none";
+        }
+    } else if (parentRow) {
+        parentRow.style.display = "none";
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById("quickCreateModal"));
+    modal.show();
+}
+
+function confirmQuickCreate() {
+    const cfg = window._quickCreateConfig;
+    if (!cfg) return;
+
+    const nomInput = document.getElementById("quickCreateNom");
+    const nom = nomInput.value.trim();
+    if (!nom) {
+        nomInput.classList.add("is-invalid");
+        return;
+    }
+
+    const code = document.getElementById("quickCreateCode").value;
+    const newItem = { id: createId(), code, nom };
+
+    if (cfg.showParent && cfg.parentKey) {
+        const parentSelect = document.querySelector(cfg.parentSelectSelector);
+        newItem[cfg.parentKey] = parentSelect?.value ?? "";
+        const parentItem = cfg.parentArray.find((item) => item.id === newItem[cfg.parentKey]);
+        newItem[cfg.parentKey.replace("Id", "Nom")] = parentItem?.nom ?? "";
+    }
+
+    cfg.array.push(newItem);
+    bootstrap.Modal.getInstance(document.getElementById("quickCreateModal"))?.hide();
+
+    setTimeout(() => {
+        const targetSelect = document.querySelector(cfg.targetSelect);
+        if (targetSelect) {
+            const option = document.createElement("option");
+            option.value = newItem.id;
+            option.textContent = newItem.nom;
+            targetSelect.appendChild(option);
+            targetSelect.value = newItem.id;
+            targetSelect.dispatchEvent(new Event("change"));
+        }
+        showToast(`✅ ${newItem.nom} créé et sélectionné`, "success");
+    }, 300);
+}
+
+window.openQuickCreateModal = openQuickCreateModal;
+window.confirmQuickCreate = confirmQuickCreate;
+
+let plansPreventifs = [
+    {
+        id: "pp-1",
+        numero: "PP-2026-0001",
+        nom: "Vidange mensuelle pompe P-01",
+        description: "Contrôle et vidange de routine.",
+        typeMaintenance: "Inspection",
+        equipementId: "equip-1",
+        equipementNom: "Compresseur principal",
+        organeId: "org-1",
+        organeNom: "Organe lubrification",
+        frequenceType: "Mensuel",
+        frequenceValeur: 1,
+        frequenceUnite: "Mois",
+        dateDebut: "2026-01-01",
+        dateFin: "",
+        dureeEstimee: 2,
+        dureeUnite: "Heures",
+        genererOTAuto: true,
+        joursAvantEcheance: 3,
+        prioriteOT: "NORMALE",
+        technicienDefaut: "N. Slimani",
+        checklist: [{ ordre: 1, tache: "Vérifier le niveau d'huile" }],
+        pieces: [],
+        statut: "ACTIF",
+        derniereExecution: "2026-05-01",
+        prochaineExecution: "2026-06-01",
+        otsGeneres: [],
+        createdAt: new Date().toISOString()
+    }
+];
+let pannes = [];
+
+const planningFilters = { search: "", statut: "", frequence: "" };
+const panneFilters = { search: "", severite: "", equipement: "", periode: "mois" };
+const historiqueFilters = { search: "", type: "", equipement: "", technicien: "", periode: "mois" };
+let planningContextId = null;
+let panneContextId = null;
+
+const planFormModal = document.getElementById("modal-plan-form");
+const planDetailModal = document.getElementById("modal-plan-detail");
+const panneFormModal = document.getElementById("modal-panne-form");
+const panneDetailModal = document.getElementById("modal-panne-detail");
+const historiqueDetailModal = document.getElementById("modal-historique-detail");
+const bsPlanFormModal = planFormModal && bootstrapAvailable ? new bootstrap.Modal(planFormModal) : null;
+const bsPlanDetailModal = planDetailModal && bootstrapAvailable ? new bootstrap.Modal(planDetailModal) : null;
+const bsPanneFormModal = panneFormModal && bootstrapAvailable ? new bootstrap.Modal(panneFormModal) : null;
+const bsPanneDetailModal = panneDetailModal && bootstrapAvailable ? new bootstrap.Modal(panneDetailModal) : null;
+const bsHistoriqueDetailModal = historiqueDetailModal && bootstrapAvailable ? new bootstrap.Modal(historiqueDetailModal) : null;
+
+const toDate = (v) => (v ? new Date(v) : null);
+const formatDate = (v) => (v ? new Date(v).toLocaleDateString("fr-FR") : "-");
+const formatDateTime = (v) => (v ? new Date(v).toLocaleString("fr-FR") : "-");
+const formatMoney = (v) => `${Number(v || 0).toLocaleString("fr-FR")} DA`;
+const normalizeText = (v) => (v || "").toString().toLowerCase();
+
+const getDateLimit = (period) => {
+    const now = new Date();
+    const d = new Date(now);
+    if (period === "mois") d.setMonth(d.getMonth() - 1);
+    if (period === "3m") d.setMonth(d.getMonth() - 3);
+    if (period === "6m") d.setMonth(d.getMonth() - 6);
+    if (period === "1an") d.setFullYear(d.getFullYear() - 1);
+    if (period === "tout") return null;
+    return d;
+};
+
+const computeProchaineExecution = (plan) => {
+    const base = plan.derniereExecution || plan.dateDebut;
+    const d = new Date(base);
+    if (Number.isNaN(d.getTime())) return "";
+    const map = { Journalier: 1, Hebdomadaire: 7, Mensuel: 30, Trimestriel: 90, Semestriel: 180, Annuel: 365 };
+    if (plan.frequenceType === "Personnalise") {
+        const value = Number(plan.frequenceValeur || 1);
+        const mult = plan.frequenceUnite === "Semaines" ? 7 : plan.frequenceUnite === "Mois" ? 30 : 1;
+        d.setDate(d.getDate() + (value * mult));
+    } else {
+        d.setDate(d.getDate() + (map[plan.frequenceType] || 30));
+    }
+    return d.toISOString().slice(0, 10);
+};
+
+const renderPlanningStatusBadge = (status) => {
+    const meta = {
+        ACTIF: ["pp-statut-actif", "fa-check-circle", "ACTIF"],
+        SUSPENDU: ["pp-statut-suspendu", "fa-pause", "SUSPENDU"],
+        EXPIRE: ["pp-statut-expire", "fa-clock", "EXPIRÉ"],
+        ARCHIVE: ["pp-statut-archive", "fa-archive", "ARCHIVÉ"]
+    }[status] || ["bg-secondary", "fa-circle", status || "-"];
+    return `<span class="badge ${meta[0]}"><i class="fa-solid ${meta[1]} me-1"></i>${meta[2]}</span>`;
+};
+
+const renderPlanningDueBadge = (dateValue) => {
+    const d = toDate(dateValue);
+    if (!d) return `<span class="badge bg-secondary">-</span>`;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const plus7 = new Date(today);
+    plus7.setDate(plus7.getDate() + 7);
+    if (d < today) return `<span class="badge bg-danger">En retard</span>`;
+    if (d <= plus7) return `<span class="badge bg-warning text-dark">Cette semaine</span>`;
+    return `<span class="badge bg-success">${formatDate(dateValue)}</span>`;
+};
+
+const renderPlanningActions = (plan) => {
+    const buttons = [
+        `<button class="btn btn-outline-secondary btn-sm" data-planning-action="detail" data-id="${plan.id}" title="Voir détail"><i class="fa-solid fa-eye"></i></button>`,
+        `<button class="btn btn-outline-primary btn-sm" data-planning-action="generate-ot" data-id="${plan.id}" title="Générer OT now"><i class="fa-solid fa-play"></i></button>`,
+        `<button class="btn btn-outline-dark btn-sm" data-planning-action="archive" data-id="${plan.id}" title="Archiver"><i class="fa-solid fa-archive"></i></button>`
+    ];
+    if (plan.statut === "ACTIF") {
+        buttons.splice(1, 0, `<button class="btn btn-outline-primary btn-sm" data-planning-action="edit" data-id="${plan.id}" title="Modifier"><i class="fa-solid fa-edit"></i></button>`);
+        buttons.splice(2, 0, `<button class="btn btn-outline-warning btn-sm" data-planning-action="suspend" data-id="${plan.id}" title="Suspendre"><i class="fa-solid fa-pause"></i></button>`);
+    }
+    if (plan.statut === "SUSPENDU") {
+        buttons.splice(1, 0, `<button class="btn btn-outline-success btn-sm" data-planning-action="reactivate" data-id="${plan.id}" title="Réactiver"><i class="fa-solid fa-play"></i></button>`);
+    }
+    return `<div class="d-flex gap-1">${buttons.join("")}</div>`;
+};
+
+const renderPlanningStats = (items) => {
+    const list = items || plansPreventifs;
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+    const actifs = list.filter((p) => p.statut === "ACTIF").length;
+    const expires = list.filter((p) => p.statut === "EXPIRE").length;
+    const e7 = list.filter((p) => {
+        const d = toDate(p.prochaineExecution);
+        if (!d) return false;
+        const diff = Math.ceil((d - new Date()) / (1000 * 60 * 60 * 24));
+        return diff >= 0 && diff <= 7;
+    }).length;
+    const otMois = ordresDeTravail.filter((ot) => {
+        const dt = toDate(ot.dateDebutPrevue || ot.createdAt);
+        return dt && dt.getMonth() === month && dt.getFullYear() === year && ot.typeMaintenance?.startsWith("MP");
+    }).length;
+    const setText = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = String(val); };
+    setText("pp-kpi-actifs", actifs);
+    setText("pp-kpi-ot-mois", otMois);
+    setText("pp-kpi-echeances", e7);
+    setText("pp-kpi-expires", expires);
+};
+
+const renderPlanningTable = () => {
+    const tbody = document.getElementById("table-planning-preventif");
+    if (!tbody) return;
+    let items = [...plansPreventifs];
+    if (planningFilters.statut) items = items.filter((x) => x.statut === planningFilters.statut);
+    if (planningFilters.frequence) items = items.filter((x) => (x.frequenceType || "").startsWith(planningFilters.frequence));
+    if (planningFilters.search) {
+        const s = normalizeText(planningFilters.search);
+        items = items.filter((x) => normalizeText(x.nom).includes(s) || normalizeText(x.equipementNom).includes(s));
+    }
+    if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Aucun plan préventif.</td></tr>`;
+        renderPlanningStats(items);
+        return;
+    }
+    tbody.innerHTML = items.map((plan) => `<tr><td>${plan.numero}</td><td>${plan.nom}</td><td>${plan.equipementNom || "-"}</td><td>${plan.frequenceType}</td><td>${formatDate(plan.derniereExecution)}</td><td>${renderPlanningDueBadge(plan.prochaineExecution)}</td><td>${renderPlanningStatusBadge(plan.statut)}</td><td>${renderPlanningActions(plan)}</td></tr>`).join("");
+    renderPlanningStats(items);
+};
+
+const createPlan = (planData) => {
+    const plan = { ...planData, id: `pp-${Date.now()}`, numero: getNextSequence(plansPreventifs, "PP"), statut: "ACTIF", otsGeneres: [], createdAt: new Date().toISOString() };
+    plan.prochaineExecution = computeProchaineExecution(plan);
+    plansPreventifs.unshift(plan);
+    renderPlanningTable();
+};
+const editPlan = (id, payload) => {
+    const p = plansPreventifs.find((x) => x.id === id);
+    if (!p) return;
+    Object.assign(p, payload);
+    p.prochaineExecution = computeProchaineExecution(p);
+    renderPlanningTable();
+};
+const suspendPlan = (id) => { const p = plansPreventifs.find((x) => x.id === id); if (p) { p.statut = "SUSPENDU"; renderPlanningTable(); } };
+const reactivatePlan = (id) => { const p = plansPreventifs.find((x) => x.id === id); if (p) { p.statut = "ACTIF"; renderPlanningTable(); } };
+const archivePlan = (id) => { const p = plansPreventifs.find((x) => x.id === id); if (p) { p.statut = "ARCHIVE"; renderPlanningTable(); } };
+
+const createOTFromPlan = (plan) => {
+    const ot = {
+        id: `ot-${Date.now()}`,
+        numero: getNextSequence(ordresDeTravail, "OT"),
+        titre: plan.nom,
+        typeMaintenance: "MP-Preventive",
+        priorite: plan.prioriteOT || "NORMALE",
+        dateDebutPrevue: plan.prochaineExecution,
+        dateFinPrevue: plan.prochaineExecution,
+        technicien: plan.technicienDefaut || "-",
+        statut: "EN_ATTENTE",
+        equipementId: plan.equipementId,
+        equipementNom: plan.equipementNom,
+        equipementCode: (getEquipmentById(plan.equipementId)?.code || "-"),
+        organeId: plan.organeId || "",
+        organeNom: plan.organeNom || "",
+        description: plan.description || plan.nom,
+        piecesAttendu: (plan.pieces || []).map((p) => ({ ...p, qtePrevue: Number(p.qtePrevue || 1), ref: p.ref || p.nom })),
+        historique: [{ action: "OT généré automatiquement depuis plan préventif", utilisateur: diUser.name, date: new Date().toISOString(), commentaire: plan.numero }],
+        createdAt: new Date().toISOString()
+    };
+    ordresDeTravail.unshift(ot);
+    plan.otsGeneres ??= [];
+    plan.otsGeneres.push(ot.id);
+    plan.derniereExecution = plan.prochaineExecution;
+    plan.prochaineExecution = computeProchaineExecution(plan);
+    renderOtTable();
+};
+
+const checkAndGenerateOTs = () => {
+    const today = new Date();
+    plansPreventifs.forEach((plan) => {
+        if (plan.statut !== "ACTIF") return;
+        if (plan.dateFin && new Date(plan.dateFin) < today) {
+            plan.statut = "EXPIRE";
+            return;
+        }
+        const next = toDate(plan.prochaineExecution);
+        if (!next || !plan.genererOTAuto) return;
+        const advance = Number(plan.joursAvantEcheance || 0);
+        const trigger = new Date(next);
+        trigger.setDate(trigger.getDate() - advance);
+        if (today >= trigger) {
+            const already = plan.otsGeneres.some((id) => {
+                const ot = ordresDeTravail.find((x) => x.id === id);
+                return ot && ot.dateDebutPrevue === plan.prochaineExecution;
+            });
+            if (!already) createOTFromPlan(plan);
+        }
+    });
+    renderPlanningTable();
+};
+
+const computeMTBF = (equipementId) => {
+    const list = pannes.filter((p) => p.equipementId === equipementId).sort((a, b) => new Date(a.dateHeurePanne) - new Date(b.dateHeurePanne));
+    if (list.length < 2) return 0;
+    let total = 0;
+    for (let i = 1; i < list.length; i += 1) total += (new Date(list[i].dateHeurePanne) - new Date(list[i - 1].dateHeurePanne)) / 36e5;
+    return total / (list.length - 1);
+};
+const computeMTTR = (equipementId) => {
+    const list = pannes.filter((p) => p.equipementId === equipementId);
+    if (!list.length) return 0;
+    return list.reduce((a, b) => a + Number(b.dureeArret || 0), 0) / list.length;
+};
+const computeDisponibilite = (equipementId) => {
+    const mtbf = computeMTBF(equipementId);
+    const mttr = computeMTTR(equipementId);
+    if (!mtbf && !mttr) return 100;
+    return (mtbf / (mtbf + mttr)) * 100;
+};
+
+const autoCreatePanneFromOT = (ot) => {
+    if (!ot || !ot.typeMaintenance?.startsWith("MC")) return;
+    const exists = pannes.some((p) => p.otId === ot.id);
+    if (exists) return;
+
+    const newPanne = {
+        id: createId(),
+        numero: getNextSequence(pannes, "PAN"),
+        otId: ot.id,
+        otNumero: ot.numero,
+        equipementId: ot.equipementId,
+        equipementNom: ot.equipementNom,
+        equipementCode: ot.equipementCode,
+        typeDefaillance: "À compléter",
+        severite: ot.priorite === "URGENTE" ? "CRITIQUE" : "MAJEURE",
+        dateHeurePanne: ot.dateReelleDebut ?? ot.dateDebutPrevue,
+        dureeArret: ot.dureeReelle ?? 0,
+        description: ot.problemConstate ?? ot.description,
+        causeIdentifiee: ot.rapportCloture ?? "",
+        actionCorrective: ot.recommandations ?? "",
+        impactProduction: ot.arretProduction === "TOTAL" ? "Arrêt total" : "Aucun impact",
+        saisieManuelle: false,
+        createdAt: new Date().toISOString()
+    };
+
+    pannes.push(newPanne);
+    if (typeof renderPannesTable === "function") renderPannesTable();
+};
+
+const renderPanneSeveriteBadge = (sev) => {
+    const map = { CRITIQUE: ["panne-sev-critique", "CRITIQUE"], MAJEURE: ["panne-sev-majeure", "MAJEURE"], MINEURE: ["panne-sev-mineure", "MINEURE"], NEGLIGEABLE: ["panne-sev-negligeable", "NÉGLIGEABLE"] };
+    const m = map[sev] || ["bg-secondary", sev];
+    return `<span class="badge ${m[0]}">${m[1]}</span>`;
+};
+
+const filterByPeriod = (items, period, dateGetter) => {
+    const limit = getDateLimit(period);
+    if (!limit) return items;
+    return items.filter((x) => {
+        const d = toDate(dateGetter(x));
+        return d && d >= limit;
+    });
+};
+
+const renderPannesStats = (items) => {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set("p-kpi-total", `${pannes.length}`);
+    set("p-kpi-mois", `${filterByPeriod(pannes, "mois", (x) => x.dateHeurePanne).length}`);
+    const byEq = {};
+    pannes.forEach((p) => { byEq[p.equipementNom] = (byEq[p.equipementNom] || 0) + 1; });
+    const top = Object.entries(byEq).sort((a, b) => b[1] - a[1])[0];
+    set("p-kpi-equip", top ? `${top[0]} (${top[1]})` : "-");
+    const mtbf = pannes.length ? (pannes.reduce((a, p) => a + computeMTBF(p.equipementId), 0) / pannes.length) : 0;
+    const mttr = pannes.length ? (pannes.reduce((a, p) => a + Number(p.dureeArret || 0), 0) / pannes.length) : 0;
+    set("p-kpi-mtbf", `${mtbf.toFixed(1)} h`);
+    set("p-kpi-mttr", `${mttr.toFixed(1)} h`);
+};
+
+const renderPannesTable = () => {
+    const tbody = document.getElementById("table-pannes");
+    if (!tbody) return;
+    let items = [...pannes];
+    items = filterByPeriod(items, panneFilters.periode, (x) => x.dateHeurePanne);
+    if (panneFilters.severite) items = items.filter((x) => x.severite === panneFilters.severite);
+    if (panneFilters.equipement) items = items.filter((x) => x.equipementId === panneFilters.equipement);
+    if (panneFilters.search) {
+        const s = normalizeText(panneFilters.search);
+        items = items.filter((x) => normalizeText(`${x.equipementNom} ${x.typeDefaillance} ${x.numero} ${formatDate(x.dateHeurePanne)}`).includes(s));
+    }
+    if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Aucune panne enregistrée.</td></tr>`;
+        renderPannesStats(items);
+        return;
+    }
+    tbody.innerHTML = items.map((p) => `<tr><td>${p.numero}</td><td>${p.equipementNom}</td><td>${p.typeDefaillance}</td><td>${renderPanneSeveriteBadge(p.severite)}</td><td>${formatDateTime(p.dateHeurePanne)}</td><td>${Number(p.dureeArret || 0).toFixed(1)} h</td><td>${p.otNumero || "-"}</td><td><div class="d-flex gap-1"><button class="btn btn-outline-secondary btn-sm" data-panne-action="detail" data-id="${p.id}"><i class="fa-solid fa-eye"></i></button>${p.saisieManuelle ? `<button class="btn btn-outline-primary btn-sm" data-panne-action="edit" data-id="${p.id}"><i class="fa-solid fa-edit"></i></button>` : ""}<button class="btn btn-outline-info btn-sm" data-panne-action="analyse" data-id="${p.id}"><i class="fa-solid fa-chart-line"></i></button></div></td></tr>`).join("");
+    renderPannesStats(items);
+};
+
+const createPanne = (data) => {
+    pannes.unshift({ ...data, id: `pan-${Date.now()}`, numero: getNextSequence(pannes, "PAN"), createdAt: new Date().toISOString() });
+    renderPannesTable();
+};
+const editPanne = (id, payload) => {
+    const p = pannes.find((x) => x.id === id);
+    if (!p) return;
+    Object.assign(p, payload);
+    renderPannesTable();
+};
+
+const buildHistorique = () => ordresDeTravail.filter((ot) => normalizeOTStatus(ot.statut) === "CLOTURE");
+
+const filterHistorique = (filters) => {
+    let items = [...buildHistorique()];
+    items = filterByPeriod(items, filters.periode, (x) => x.dateFinPrevue || x.createdAt);
+    if (filters.type) items = items.filter((x) => (x.typeMaintenance || "").startsWith(filters.type));
+    if (filters.equipement) items = items.filter((x) => x.equipementId === filters.equipement);
+    if (filters.technicien) items = items.filter((x) => x.technicien === filters.technicien);
+    if (filters.search) {
+        const s = normalizeText(filters.search);
+        items = items.filter((x) => normalizeText(`${x.numero} ${x.equipementNom} ${x.technicien}`).includes(s));
+    }
+    return items;
+};
+
+const renderResultBadge = (resultat) => {
+    const map = { RESOLU: "bg-success", PARTIEL: "bg-warning text-dark", RECIDIVE: "bg-danger" };
+    const labels = { RESOLU: "✅ Résolu", PARTIEL: "⚠️ Partiel", RECIDIVE: "🔄 Récidive" };
+    const key = resultat || "RESOLU";
+    return `<span class="badge ${map[key] || "bg-secondary"}">${labels[key] || key}</span>`;
+};
+
+const renderHistoriqueStats = () => {
+    const items = filterHistorique(historiqueFilters);
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const thisMonth = filterByPeriod(buildHistorique(), "mois", (x) => x.dateFinPrevue || x.createdAt).length;
+    const totalCost = items.reduce((s, ot) => s + Number(ot.coutTotal || 0), 0);
+    const totalDuration = items.reduce((s, ot) => s + Number(ot.closePrefill?.dureeReelle || 0), 0);
+    set("h-kpi-total", `${items.length}`);
+    set("h-kpi-mois", `${thisMonth}`);
+    set("h-kpi-cout", formatMoney(totalCost));
+    set("h-kpi-duree", `${totalDuration.toFixed(1)}`);
+};
+
+const renderHistoriqueTable = () => {
+    const tbody = document.getElementById("table-historique");
+    if (!tbody) return;
+    const items = filterHistorique(historiqueFilters);
+    if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Aucune intervention clôturée.</td></tr>`;
+        renderHistoriqueStats();
+        return;
+    }
+    tbody.innerHTML = items.map((ot) => {
+        const cp = ot.closePrefill || {};
+        const piecesCost = (cp.piecesConsommees || []).reduce((s, p) => s + Number(p.coutTotal || 0), 0);
+        const moCost = Number(ot.coutMainOeuvre || 0);
+        const total = Number(ot.coutTotal || (piecesCost + moCost));
+        const result = (cp.resultat || "RESOLU").toUpperCase().replace("É", "E");
+        return `<tr><td>${ot.numero}</td><td>${(ot.typeMaintenance || "").slice(0, 2)}</td><td>${ot.equipementNom}</td><td>${ot.technicien || "-"}</td><td>${formatDate(cp.dateReelleFin || ot.dateFinPrevue)}</td><td>${Number(cp.dureeReelle || 0).toFixed(1)} h</td><td>${renderResultBadge(result)}</td><td>${formatMoney(total)}</td><td><div class="d-flex gap-1"><button class="btn btn-outline-secondary btn-sm" data-historique-action="detail" data-id="${ot.id}"><i class="fa-solid fa-eye"></i></button><button class="btn btn-outline-danger btn-sm" data-historique-action="pdf" data-id="${ot.id}"><i class="fa-solid fa-file-pdf"></i></button></div></td></tr>`;
+    }).join("");
+    renderHistoriqueStats();
+};
+
+const exportHistoriqueCSV = () => {
+    const items = filterHistorique(historiqueFilters);
+    const headers = ["N°OT", "Type", "Équipement", "Code", "Technicien", "Date", "Durée réelle", "Résultat", "Coût pièces", "Coût MO", "Coût total"];
+    const rows = items.map((ot) => {
+        const cp = ot.closePrefill || {};
+        const piecesCost = (cp.piecesConsommees || []).reduce((s, p) => s + Number(p.coutTotal || 0), 0);
+        const moCost = Number(ot.coutMainOeuvre || 0);
+        const total = Number(ot.coutTotal || (piecesCost + moCost));
+        return [ot.numero, (ot.typeMaintenance || "").slice(0, 2), ot.equipementNom, ot.equipementCode, ot.technicien || "-", formatDate(cp.dateReelleFin || ot.dateFinPrevue), Number(cp.dureeReelle || 0), cp.resultat || "RESOLU", piecesCost, moCost, total];
+    });
+    const csvContent = [headers.join(","), ...rows.map((r) => r.map((v) => `"${String(v).replaceAll("\"", "\"\"")}"`).join(","))].join("\n");
+    const filename = `historique-interventions-${new Date().toISOString().slice(0, 10)}.csv`;
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+};
+
+const initPlanningFormOptions = () => {
+    const equipSelect = document.getElementById("pp-equipement-select");
+    const orgSelect = document.getElementById("pp-organe-select");
+    const techSelect = document.getElementById("pp-tech-select");
+    const pieceBody = document.getElementById("pp-pieces-body");
+    if (equipSelect) equipSelect.innerHTML = `<option value="">Sélectionner</option>${equipment.map((e) => `<option value="${e.id}">${e.name || e.nom} (${e.code || "-"})</option>`).join("")}`;
+    if (orgSelect) orgSelect.innerHTML = `<option value="">Aucun</option>`;
+    if (techSelect) techSelect.innerHTML = `<option value="">Aucun</option>${Array.from(new Set([...ordresDeTravail.map((x) => x.technicien), ...bonsDeTravail.map((x) => x.technicienPrincipal)]).values()).filter(Boolean).map((t) => `<option>${t}</option>`).join("")}`;
+    if (pieceBody) pieceBody.innerHTML = "";
+};
+
+const populatePanneOptions = () => {
+    const equipFilter = document.getElementById("panne-filter-equipement");
+    const equipSelect = document.getElementById("panne-equipement-select");
+    const histEq = document.getElementById("historique-filter-equipement");
+    const histTech = document.getElementById("historique-filter-technicien");
+    const otSelect = document.getElementById("panne-ot-select");
+    const eqOptions = `<option value="">Tous équipements</option>${equipment.map((e) => `<option value="${e.id}">${e.name || e.nom}</option>`).join("")}`;
+    if (equipFilter) equipFilter.innerHTML = eqOptions;
+    if (equipSelect) equipSelect.innerHTML = `<option value="">Sélectionner</option>${equipment.map((e) => `<option value="${e.id}">${e.name || e.nom}</option>`).join("")}`;
+    if (histEq) histEq.innerHTML = eqOptions;
+    if (histTech) {
+        const techs = Array.from(new Set(ordresDeTravail.map((x) => x.technicien).filter(Boolean)));
+        histTech.innerHTML = `<option value="">Tous techniciens</option>${techs.map((t) => `<option>${t}</option>`).join("")}`;
+    }
+    if (otSelect) otSelect.innerHTML = `<option value="">Aucun</option>${ordresDeTravail.map((ot) => `<option value="${ot.id}">${ot.numero} - ${ot.titre}</option>`).join("")}`;
+};
+
+const initPlanningPannesHistorique = () => {
+    plansPreventifs.forEach((p) => { p.prochaineExecution = p.prochaineExecution || computeProchaineExecution(p); });
+    ordresDeTravail.filter((ot) => normalizeOTStatus(ot.statut) === "CLOTURE" && ot.typeMaintenance?.startsWith("MC")).forEach((ot) => autoCreatePanneFromOT(ot));
+    populatePanneOptions();
+    renderPlanningTable();
+    renderPannesTable();
+    renderHistoriqueTable();
+    checkAndGenerateOTs();
+};
+
+document.addEventListener("input", (event) => {
+    if (event.target.matches("[data-planning-filter='search']")) { planningFilters.search = event.target.value; renderPlanningTable(); }
+    if (event.target.matches("[data-panne-filter='search']")) { panneFilters.search = event.target.value; renderPannesTable(); }
+    if (event.target.matches("[data-historique-filter='search']")) { historiqueFilters.search = event.target.value; renderHistoriqueTable(); }
+});
+
+document.addEventListener("change", (event) => {
+    if (event.target.matches("[data-planning-filter='statut']")) { planningFilters.statut = event.target.value; renderPlanningTable(); }
+    if (event.target.matches("[data-planning-filter='frequence']")) { planningFilters.frequence = event.target.value; renderPlanningTable(); }
+    if (event.target.matches("[data-panne-filter='severite']")) { panneFilters.severite = event.target.value; renderPannesTable(); }
+    if (event.target.matches("[data-panne-filter='equipement']")) { panneFilters.equipement = event.target.value; renderPannesTable(); }
+    if (event.target.matches("[data-panne-filter='periode']")) { panneFilters.periode = event.target.value; renderPannesTable(); }
+    if (event.target.matches("[data-historique-filter='type']")) { historiqueFilters.type = event.target.value; renderHistoriqueTable(); }
+    if (event.target.matches("[data-historique-filter='equipement']")) { historiqueFilters.equipement = event.target.value; renderHistoriqueTable(); }
+    if (event.target.matches("[data-historique-filter='technicien']")) { historiqueFilters.technicien = event.target.value; renderHistoriqueTable(); }
+    if (event.target.matches("[data-historique-filter='periode']")) { historiqueFilters.periode = event.target.value; renderHistoriqueTable(); }
+    if (event.target.id === "pp-frequence-type") {
+        const block = document.getElementById("pp-custom-frequence");
+        if (block) block.classList.toggle("d-none", event.target.value !== "Personnalise");
+    }
+});
+
+document.addEventListener("click", (event) => {
+    const pBtn = event.target.closest("[data-planning-action]");
+    if (pBtn) {
+        const action = pBtn.dataset.planningAction;
+        const id = pBtn.dataset.id;
+        const plan = plansPreventifs.find((x) => x.id === id);
+        if (action === "create") {
+            planningContextId = null;
+            initPlanningFormOptions();
+            const form = document.getElementById("form-plan-preventif");
+            form?.reset();
+            const ppNumeroInput = form?.querySelector("[data-pp-field='numero']");
+            const ppDateDebutInput = form?.querySelector("[data-pp-field='dateDebut']");
+            if (ppNumeroInput) ppNumeroInput.value = getNextSequence(plansPreventifs, "PP");
+            if (ppDateDebutInput) ppDateDebutInput.value = new Date().toISOString().slice(0, 10);
+            bsPlanFormModal?.show();
+        }
+        if (action === "edit" && plan) {
+            planningContextId = id;
+            initPlanningFormOptions();
+            const form = document.getElementById("form-plan-preventif");
+            ["id", "numero", "nom", "description", "dateDebut", "dateFin", "dureeEstimee", "dureeUnite", "frequenceType", "frequenceValeur", "frequenceUnite", "joursAvantEcheance", "prioriteOT", "technicienDefaut"].forEach((k) => { const el = form?.querySelector(`[data-pp-field='${k}']`); if (el) el.value = plan[k] ?? ""; });
+            const e = form?.querySelector("[data-pp-field='equipementId']"); if (e) e.value = plan.equipementId || "";
+            bsPlanFormModal?.show();
+        }
+        if (action === "suspend" && id) suspendPlan(id);
+        if (action === "reactivate" && id) reactivatePlan(id);
+        if (action === "archive" && id) archivePlan(id);
+        if (action === "generate-ot" && plan) { createOTFromPlan(plan); renderPlanningTable(); showToast("OT préventif généré.", "success"); }
+        if (action === "detail" && plan) {
+            const body = document.getElementById("plan-detail-body");
+            if (body) body.innerHTML = `<div class="d-flex gap-2 mb-3"><span class="badge bg-dark">${plan.numero}</span>${renderPlanningStatusBadge(plan.statut)}</div><h5>${plan.nom}</h5><div class="row"><div class="col-md-6"><div><strong>Équipement:</strong> ${plan.equipementNom}</div><div><strong>Fréquence:</strong> ${plan.frequenceType}</div><div><strong>Prochaine exéc.:</strong> ${formatDate(plan.prochaineExecution)}</div></div><div class="col-md-6"><div><strong>Technicien:</strong> ${plan.technicienDefaut || "-"}</div><div><strong>Priorité OT:</strong> ${plan.prioriteOT}</div><div><strong>OT générés:</strong> ${(plan.otsGeneres || []).length}</div></div></div>`;
+            bsPlanDetailModal?.show();
+        }
+    }
+
+    const savePlan = event.target.closest("[data-pp-action='save']");
+    if (savePlan) {
+        const form = document.getElementById("form-plan-preventif");
+        if (!form || !form.checkValidity()) return;
+        const payload = {
+            numero: form.querySelector("[data-pp-field='numero']").value,
+            nom: form.querySelector("[data-pp-field='nom']").value.trim(),
+            description: form.querySelector("[data-pp-field='description']").value.trim(),
+            typeMaintenance: form.querySelector("[data-pp-field='typeMaintenance']").value || "Inspection",
+            equipementId: form.querySelector("[data-pp-field='equipementId']").value,
+            equipementNom: getEquipmentById(form.querySelector("[data-pp-field='equipementId']").value)?.name || "",
+            organeId: form.querySelector("[data-pp-field='organeId']").value,
+            organeNom: organs.find((o) => o.id === form.querySelector("[data-pp-field='organeId']").value)?.name || "",
+            frequenceType: form.querySelector("[data-pp-field='frequenceType']").value,
+            frequenceValeur: Number(form.querySelector("[data-pp-field='frequenceValeur']").value || 1),
+            frequenceUnite: form.querySelector("[data-pp-field='frequenceUnite']").value || "Jours",
+            dateDebut: form.querySelector("[data-pp-field='dateDebut']").value,
+            dateFin: form.querySelector("[data-pp-field='dateFin']").value,
+            dureeEstimee: Number(form.querySelector("[data-pp-field='dureeEstimee']").value || 0),
+            dureeUnite: form.querySelector("[data-pp-field='dureeUnite']").value || "Heures",
+            genererOTAuto: form.querySelector("[data-pp-field='genererOTAuto']").value === "oui",
+            joursAvantEcheance: Number(form.querySelector("[data-pp-field='joursAvantEcheance']").value || 0),
+            prioriteOT: form.querySelector("[data-pp-field='prioriteOT']").value,
+            technicienDefaut: form.querySelector("[data-pp-field='technicienDefaut']").value,
+            checklist: [],
+            pieces: [],
+            derniereExecution: ""
+        };
+        if (planningContextId) editPlan(planningContextId, payload); else createPlan(payload);
+        bsPlanFormModal?.hide();
+    }
+
+    const paBtn = event.target.closest("[data-panne-action]");
+    if (paBtn) {
+        const action = paBtn.dataset.panneAction;
+        const id = paBtn.dataset.id;
+        const panne = pannes.find((x) => x.id === id);
+        if (action === "create") {
+            panneContextId = null;
+            populatePanneOptions();
+            const form = document.getElementById("form-panne");
+            form?.reset();
+            if (form) form.querySelector("[data-panne-field='numero']").value = getNextSequence(pannes, "PAN");
+            bsPanneFormModal?.show();
+        }
+        if (action === "edit" && panne) {
+            panneContextId = id;
+            populatePanneOptions();
+            const form = document.getElementById("form-panne");
+            if (form) Object.keys(panne).forEach((k) => { const e = form.querySelector(`[data-panne-field='${k}']`); if (e) e.value = panne[k] ?? ""; });
+            bsPanneFormModal?.show();
+        }
+        if (action === "detail" && panne) {
+            const body = document.getElementById("panne-detail-body");
+            if (body) {
+                const lastFive = pannes.filter((x) => x.equipementId === panne.equipementId).slice(0, 5);
+                body.innerHTML = `<div class="d-flex gap-2 mb-2"><span class="badge bg-dark">${panne.numero}</span>${renderPanneSeveriteBadge(panne.severite)}<span class="badge bg-info">${panne.typeDefaillance}</span></div><div class="row g-3"><div class="col-md-6"><div><strong>Date panne:</strong> ${formatDateTime(panne.dateHeurePanne)}</div><div><strong>Durée arrêt:</strong> ${panne.dureeArret} h</div><div><strong>Cause:</strong> ${panne.causeIdentifiee || "-"}</div><div><strong>Description:</strong> ${panne.description || "-"}</div></div><div class="col-md-6"><div><strong>Impact:</strong> ${panne.impactProduction || "-"}</div><div><strong>Coût:</strong> ${formatMoney(panne.coutEstime)}</div><div><strong>OT lié:</strong> ${panne.otNumero || "-"}</div><div><strong>Disponibilité:</strong> ${computeDisponibilite(panne.equipementId).toFixed(1)}%</div></div></div><hr><h6>Historique des pannes</h6><table class="table table-sm"><thead><tr><th>N°</th><th>Date</th><th>Type</th><th>Durée arrêt</th></tr></thead><tbody>${lastFive.map((x) => `<tr><td>${x.numero}</td><td>${formatDate(x.dateHeurePanne)}</td><td>${x.typeDefaillance}</td><td>${x.dureeArret} h</td></tr>`).join("")}</tbody></table><div class="fiabilite-card p-2 rounded"><strong>MTBF:</strong> ${computeMTBF(panne.equipementId).toFixed(1)} h | <strong>MTTR:</strong> ${computeMTTR(panne.equipementId).toFixed(1)} h</div>`;
+            }
+            bsPanneDetailModal?.show();
+        }
+        if (action === "analyse" && panne) {
+            showToast(`MTBF: ${computeMTBF(panne.equipementId).toFixed(1)}h | MTTR: ${computeMTTR(panne.equipementId).toFixed(1)}h`, "info");
+        }
+    }
+
+    if (event.target.closest("[data-panne-action='save']")) {
+        const form = document.getElementById("form-panne");
+        if (!form || !form.checkValidity()) return;
+        const equipementId = form.querySelector("[data-panne-field='equipementId']").value;
+        const payload = {
+            otId: form.querySelector("[data-panne-field='otId']").value,
+            otNumero: ordresDeTravail.find((x) => x.id === form.querySelector("[data-panne-field='otId']").value)?.numero || "",
+            equipementId,
+            equipementNom: getEquipmentById(equipementId)?.name || "",
+            equipementCode: getEquipmentById(equipementId)?.code || "",
+            organeId: form.querySelector("[data-panne-field='organeId']").value,
+            organeNom: organs.find((o) => o.id === form.querySelector("[data-panne-field='organeId']").value)?.name || "",
+            typeDefaillance: form.querySelector("[data-panne-field='typeDefaillance']").value,
+            severite: form.querySelector("[data-panne-field='severite']").value || "MINEURE",
+            dateHeurePanne: form.querySelector("[data-panne-field='dateHeurePanne']").value,
+            dureeArret: Number(form.querySelector("[data-panne-field='dureeArret']").value || 0),
+            description: form.querySelector("[data-panne-field='description']").value,
+            causeIdentifiee: form.querySelector("[data-panne-field='causeIdentifiee']").value,
+            actionCorrective: form.querySelector("[data-panne-field='actionCorrective']").value,
+            impactProduction: form.querySelector("[data-panne-field='impactProduction']").value,
+            coutEstime: Number(form.querySelector("[data-panne-field='coutEstime']").value || 0),
+            saisieManuelle: true
+        };
+        if (panneContextId) editPanne(panneContextId, payload); else createPanne(payload);
+        bsPanneFormModal?.hide();
+    }
+
+    const sevBtn = event.target.closest("[data-panne-severite]");
+    if (sevBtn) {
+        const group = sevBtn.closest("[data-panne-severite-group]");
+        group?.querySelectorAll("[data-panne-severite]").forEach((b) => b.classList.remove("active"));
+        sevBtn.classList.add("active");
+        const hidden = document.querySelector("[data-panne-field='severite']");
+        if (hidden) hidden.value = sevBtn.dataset.panneSeverite;
+    }
+
+    const hBtn = event.target.closest("[data-historique-action]");
+    if (hBtn) {
+        const action = hBtn.dataset.historiqueAction;
+        const ot = ordresDeTravail.find((x) => x.id === hBtn.dataset.id);
+        if (action === "export") exportHistoriqueCSV();
+        if (action === "pdf" && ot) {
+            btPrintContext = bonsDeTravail.find((b) => b.otId === ot.id) || null;
+            if (btPrintContext) openBtPrintModal(btPrintContext.id);
+            else showToast("Aucun BT imprimable trouvé pour cet OT.", "warning");
+        }
+        if (action === "detail" && ot) {
+            const cp = ot.closePrefill || {};
+            const body = document.getElementById("historique-detail-body");
+            if (body) body.innerHTML = `<div class="bt-detail-header"><div class="d-flex gap-2"><span class="badge bg-dark">${ot.numero}</span><span class="badge bg-primary">${(ot.typeMaintenance || "").slice(0, 2)}</span>${renderDiUrgenceBadge(ot.priorite || "NORMALE")}</div><h5 class="mt-2">${ot.equipementNom} (${ot.equipementCode || "-"})</h5></div><div class="row g-3"><div class="col-md-4"><h6>Intervention</h6><div><strong>Travaux:</strong> ${cp.travauxEffectues || "-"}</div><div><strong>Résultat:</strong> ${cp.resultat || "-"}</div><div><strong>Observations:</strong> ${ot.description || "-"}</div></div><div class="col-md-4"><h6>Équipement</h6><div><strong>Organe:</strong> ${ot.organeNom || "-"}</div><div><strong>Localisation:</strong> ${ot.localisation || "-"}</div><div><strong>Problème initial:</strong> ${ot.symptomes || "-"}</div></div><div class="col-md-4"><h6>Ressources</h6><div><strong>Technicien:</strong> ${ot.technicien || "-"}</div><div><strong>Durée:</strong> ${Number(cp.dureeReelle || 0).toFixed(1)} h</div><div><strong>Coût total:</strong> ${formatMoney(ot.coutTotal || 0)}</div></div></div><hr><h6>Pièces consommées</h6><table class="table table-sm"><thead><tr><th>Article</th><th>Réf</th><th>Qté</th><th>Unité</th><th>Prix unit.</th><th>Coût total</th></tr></thead><tbody>${(cp.piecesConsommees || []).map((p) => `<tr><td>${p.nom}</td><td>${p.ref || "-"}</td><td>${p.qteReelle || p.qtePrevue || 0}</td><td>${p.unite || "-"}</td><td>${p.prixUnitaire || "-"}</td><td>${p.coutTotal || "-"}</td></tr>`).join("") || `<tr><td colspan="6" class="text-center text-muted">Aucune pièce.</td></tr>`}</tbody></table><hr><h6>Timeline activité</h6><div class="di-history">${(ot.historique || []).map((h) => `<div class="di-history-item"><div class="fw-semibold">${h.action}</div><div class="small">${h.utilisateur || "-"} — ${formatDateTime(h.date)}</div><div>${h.commentaire || ""}</div></div>`).join("")}</div>`;
+            bsHistoriqueDetailModal?.show();
+        }
+    }
+});
+
 const initNavigation = () => {
     const hashView = window.location.hash.replace("#", "");
     if (hashView) {
@@ -7357,6 +9344,18 @@ if (crudDeleteConfirm) {
     crudDeleteConfirm.addEventListener("click", confirmDelete);
 }
 
+const quickCreateConfirmBtn = document.getElementById("quickCreateConfirmBtn");
+if (quickCreateConfirmBtn) {
+    quickCreateConfirmBtn.addEventListener("click", confirmQuickCreate);
+}
+
+document.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-quick-create]");
+    if (!btn) return;
+    const type = btn.dataset.quickCreate;
+    openQuickCreateModal(type);
+});
+
 window.addEventListener("resize", updateSidebarState);
 
 applyDate();
@@ -7372,3 +9371,4 @@ renderDiTable();
 renderOtTable();
 renderBtTable();
 populateBtTechnicienFilter();
+initPlanningPannesHistorique();
