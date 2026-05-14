@@ -15,6 +15,7 @@ const crudDetailTitle = document.getElementById("crud-detail-title");
 const crudDetailBody = document.getElementById("crud-detail-body");
 const crudDeleteBody = document.getElementById("crud-delete-body");
 const crudDeleteConfirm = document.getElementById("crud-delete-confirm");
+const ENTREPRISE_ID = document.body.dataset.entrepriseId;
 
 const bootstrapAvailable = typeof bootstrap !== "undefined";
 const crudFormModal = crudFormModalElement && bootstrapAvailable ? new bootstrap.Modal(crudFormModalElement) : null;
@@ -30,6 +31,40 @@ let activeFormContext = null;
 let pendingDelete = null;
 let orgFormContext = null;
 let pendingOrgDelete = null;
+
+const getAntiforgeryToken = () =>
+    document.querySelector("input[name='__RequestVerificationToken']")?.value ?? "";
+
+async function loadAllData() {
+    const [
+        treeRes, unitesRes, equipRes, orgRes, artRes,
+        mvtRes, cmdRes, frsRes, intRes
+    ] = await Promise.all([
+        fetch(`?handler=Tree&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Unites&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Equipements&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Organes&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Articles&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Mouvements&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Commandes&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Fournisseurs&entrepriseId=${ENTREPRISE_ID}`),
+        fetch(`?handler=Interventions&entrepriseId=${ENTREPRISE_ID}`)
+    ]);
+
+    treeData = await treeRes.json();
+    unitesPrincipales = await unitesRes.json();
+    equipements = await equipRes.json();
+    organes = await orgRes.json();
+    articles = await artRes.json();
+    mouvementsStock = await mvtRes.json();
+    commandesAchat = await cmdRes.json();
+    fournisseurs = await frsRes.json();
+    interventions = await intRes.json();
+
+    renderAllTables();
+    updateAllEquipementCounters();
+    checkStockAlerts();
+}
 
 const createId = () => `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
@@ -48,10 +83,10 @@ let organes = [];
 let groupesArticles = [];
 let famillesArticles = [];
 let sousFamillesArticles = [];
-let articles = [];
+let articles = []; // seeded after computeArticleStats() is defined
 let fournisseurs = [
     {
-        id: "four-1",
+        id: "frs-1",
         code: "FRN-0001",
         nom: "SKF Algérie",
         contact: "M. Boualem",
@@ -80,7 +115,7 @@ let mouvementsStock = [
         otNumero: null,
         btId: null,
         btNumero: null,
-        fournisseurId: "four-1",
+        fournisseurId: "frs-1",
         fournisseurNom: "SKF Algérie",
         numeroBC: "BC-2026-0001",
         numeroBL: "BL-2026-0001",
@@ -92,11 +127,39 @@ let mouvementsStock = [
         createdAt: new Date().toISOString()
     }
 ];
+let interventions = [
+    {
+        id: "int-1",
+        equipementId: "equip-1",
+        type: "PANNE",
+        motif: "Défaillance joint d'étanchéité",
+        dateArret: "2024-06-10T09:00:00",
+        dateReprise: "2024-06-11T14:00:00",
+        dureeReelleHeures: 29,
+        statut: "CLOTURE",
+        saisiPar: "Admin",
+        observation: "",
+        createdAt: "2024-06-10T09:00:00"
+    },
+    {
+        id: "int-2",
+        equipementId: "equip-1",
+        type: "MAINTENANCE",
+        motif: "Révision générale programmée",
+        dateArret: "2026-04-28T08:00:00",
+        dateReprise: null,
+        dureeReelleHeures: null,
+        statut: "EN_COURS",
+        saisiPar: "Admin",
+        observation: "",
+        createdAt: "2026-04-28T08:00:00"
+    }
+];
 let commandesAchat = [
     {
         id: "cmd-1",
         numero: "BC-2026-0001",
-        fournisseurId: "four-1",
+        fournisseurId: "frs-1",
         fournisseurNom: "SKF Algérie",
         statut: "LIVREE",
         dateCommande: "2026-01-15",
@@ -129,6 +192,15 @@ const company = {
     createdAt: "1998-01-12",
     phone: "+213 21 00 00 00"
 };
+
+const planningTravail = {
+    joursOuvres: [0, 1, 2, 3, 4],
+    heureDebut: 8,
+    heureFin: 17,
+    heuresParJour: 9
+};
+
+const currentUser = `${company.name} / Admin`;
 
 const articleConfigs = {
     groupes: {
@@ -345,7 +417,7 @@ let sites = [
     }
 ];
 
-const treeData = [
+let treeData = [
     {
         type: "entreprise",
         name: "SNVI - Soci\u00e9t\u00e9 Nationale des V\u00e9hicules Industriels",
@@ -714,8 +786,8 @@ const entityConfigs = {
                     { name: "lineId", label: "Syst\u00e8me parent", icon: "fa-project-diagram", type: "parent", required: true },
                     { name: "tag", label: "Code \u00e9quipement (TAG)", icon: "fa-hashtag", type: "text", required: true, uppercase: true, unique: true },
                     { name: "name", label: "D\u00e9signation", icon: "fa-cog", type: "text", required: true },
-                    { name: "description", label: "Description d\u00e9taill\u00e9e", icon: "fa-align-left", type: "textarea", required: true },
-                    { name: "family", label: "Famille", icon: "fa-folder", type: "text", required: true },
+                    { name: "description", label: "Description d\u00e9taill\u00e9e", icon: "fa-align-left", type: "textarea", required: false },
+                    { name: "family", label: "Famille", icon: "fa-folder", type: "text", required: false },
                     { name: "subFamily", label: "Sous-famille", icon: "fa-folder-open", type: "text", required: false },
                     { name: "category", label: "Cat\u00e9gorie", icon: "fa-tag", type: "text", required: false },
                     {
@@ -1403,6 +1475,7 @@ const renderFilters = (entityKey) => {
 };
 
 const renderAllTables = () => {
+    updateAllEquipementCounters();
     ["sites", "departments", "workshops", "lines", "equipment", "subassemblies", "organs", "components", "spareParts"].forEach((key) => {
         renderFilters(key);
         renderTable(key);
@@ -1607,32 +1680,29 @@ const renderOrgTable = (level) => {
             case "divisions":
                 return `
                     <tr>
-                        <td>${item.code}</td>
-                        <td>${item.nom}</td>
-                        <td>${item.uniteName ?? ""}</td>
-                        <td>${item.wilaya}</td>
-                        <td>${item.responsable}</td>
-                        <td>${renderOrgActions(level, item.id)}</td>
+                        <td style="width:120px">${item.code}</td>
+                        <td style="width:200px">${item.nom}</td>
+                        <td style="width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px">${item.uniteName ?? ""}</td>
+                        <td style="width:150px">${item.responsable}</td>
+                        <td style="width:120px">${renderOrgActions(level, item.id)}</td>
                     </tr>`;
             case "departements":
                 return `
                     <tr>
-                        <td>${item.code}</td>
-                        <td>${item.nom}</td>
-                        <td>${item.divisionName ?? ""}</td>
-                        <td>${item.wilaya}</td>
-                        <td>${item.chef}</td>
-                        <td>${renderOrgActions(level, item.id)}</td>
+                        <td style="width:120px">${item.code}</td>
+                        <td style="width:200px">${item.nom}</td>
+                        <td style="width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px">${item.divisionName ?? ""}</td>
+                        <td style="width:150px">${item.chef}</td>
+                        <td style="width:120px">${renderOrgActions(level, item.id)}</td>
                     </tr>`;
             case "services":
                 return `
                     <tr>
-                        <td>${item.code}</td>
-                        <td>${item.nom}</td>
-                        <td>${item.departementName ?? ""}</td>
-                        <td>${item.batiment ?? ""}</td>
-                        <td>${item.chef}</td>
-                        <td>${renderOrgActions(level, item.id)}</td>
+                        <td style="width:120px">${item.code}</td>
+                        <td style="width:200px">${item.nom}</td>
+                        <td style="width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px">${item.departementName ?? ""}</td>
+                        <td style="width:150px">${item.chef}</td>
+                        <td style="width:120px">${renderOrgActions(level, item.id)}</td>
                     </tr>`;
             default:
                 return "";
@@ -1849,10 +1919,6 @@ const buildDetailFields = (level, item) => {
     if (level === "divisions") {
         fields.push(
             ["Unité", item.uniteName],
-            ["Wilaya", item.wilaya],
-            ["Daïra", item.daira],
-            ["Commune", item.commune],
-            ["Adresse", item.adresse],
             ["Responsable", item.responsable],
             ["Téléphone", item.telephone],
             ["Email", item.email],
@@ -1862,10 +1928,6 @@ const buildDetailFields = (level, item) => {
     if (level === "departements") {
         fields.push(
             ["Division", item.divisionName],
-            ["Wilaya", item.wilaya],
-            ["Daïra", item.daira],
-            ["Commune", item.commune],
-            ["Adresse", item.adresse],
             ["Chef", item.chef],
             ["Téléphone", item.telephone],
             ["Email", item.email],
@@ -1875,11 +1937,6 @@ const buildDetailFields = (level, item) => {
     if (level === "services") {
         fields.push(
             ["Département", item.departementName],
-            ["Wilaya", item.wilaya],
-            ["Daïra", item.daira],
-            ["Commune", item.commune],
-            ["Bâtiment", item.batiment],
-            ["Adresse", item.adresse],
             ["Chef", item.chef],
             ["Téléphone", item.telephone],
             ["Email", item.email],
@@ -2022,6 +2079,296 @@ const buildEquipOptions = (items) => {
     return items.map((item) => `<option value="${item.id}">${item.nom}</option>`).join("");
 };
 
+const toDateValue = (value) => {
+    if (!value) {
+        return null;
+    }
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatHourValue = (value) => `${Math.round(Number(value) || 0).toLocaleString("fr-FR")} h`;
+const formatDateTimeValue = (value) => {
+    if (!value) {
+        return "-";
+    }
+    const date = toDateValue(value);
+    return date ? date.toLocaleString("fr-FR") : "-";
+};
+const getDisponibiliteClass = (value) => {
+    if (value >= 85) return "bg-success";
+    if (value >= 60) return "bg-warning";
+    return "bg-danger";
+};
+const getStatutBadgeClass = (value) => {
+    if (value === "En panne") return "bg-danger";
+    if (value === "En maintenance") return "bg-warning text-dark";
+    if (value === "À l'arrêt") return "bg-warning text-dark";
+    if (value === "En service") return "bg-success";
+    return "bg-secondary";
+};
+
+const countWorkingHours = (dateDebut, dateFin = new Date(), planning = planningTravail) => {
+    const start = toDateValue(dateDebut);
+    const end = toDateValue(dateFin);
+    if (!start || !end || end < start || start > new Date()) {
+        return 0;
+    }
+    const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const stop = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    let total = 0;
+    while (cursor <= stop) {
+        if (planning.joursOuvres.includes(cursor.getDay())) {
+            total += Number(planning.heuresParJour) || 0;
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return total;
+};
+
+const countDowntimeHours = (interventionsList, dateDebut, dateFin = new Date()) => {
+    const start = toDateValue(dateDebut);
+    const end = toDateValue(dateFin);
+    if (!start || !end || end < start) {
+        return 0;
+    }
+    const types = ["PANNE", "ARRET_PROGRAMME", "MAINTENANCE"];
+    const statuts = ["EN_COURS", "CLOTURE"];
+    const total = (interventionsList || [])
+        .filter((intervention) => types.includes(intervention.type)
+            && statuts.includes(intervention.statut))
+        .reduce((sum, intervention) => {
+            const dateArret = toDateValue(intervention.dateArret);
+            const dateReprise = toDateValue(intervention.dateReprise) || new Date();
+            if (!dateArret || !dateReprise || dateReprise < dateArret) {
+                return sum;
+            }
+            const effectiveStart = dateArret < start ? start : dateArret;
+            const effectiveEnd = dateReprise > end ? end : dateReprise;
+            if (effectiveEnd <= effectiveStart) {
+                return sum;
+            }
+            return sum + ((effectiveEnd - effectiveStart) / 3600000);
+        }, 0);
+    return Math.round(total * 10) / 10;
+};
+
+const computeEquipementCounters = (equipement, interventionsList = interventions) => {
+    const dateMiseEnService = equipement?.dateMiseEnService;
+    if (!dateMiseEnService) {
+        return {
+            heuresThéoriques: 0,
+            heuresArret: 0,
+            heuresMarche: 0,
+            disponibilite: 100,
+            joursDepuisMiseEnService: 0,
+            dateMiseEnService: "",
+            statut: "En service"
+        };
+    }
+
+    const now = new Date();
+    const dateStart = toDateValue(dateMiseEnService);
+    if (!dateStart || dateStart > now) {
+        return {
+            heuresThéoriques: 0,
+            heuresArret: 0,
+            heuresMarche: 0,
+            disponibilite: 100,
+            joursDepuisMiseEnService: 0,
+            dateMiseEnService,
+            statut: "En service"
+        };
+    }
+
+    const heuresThéoriques = countWorkingHours(dateStart, now, planningTravail);
+    const interventionsEquipement = (interventionsList || []).filter((intervention) => intervention.equipementId === equipement.id);
+    const heuresArret = countDowntimeHours(interventionsEquipement, dateStart, now);
+    const heuresMarche = Math.max(0, heuresThéoriques - heuresArret);
+    const disponibilite = heuresThéoriques > 0 ? Number(((heuresMarche / heuresThéoriques) * 100).toFixed(1)) : 100;
+    const joursDepuisMiseEnService = Math.max(0, Math.floor((now - dateStart) / 86400000));
+
+    const activeIntervention = (interventionsList || []).find((intervention) => intervention.equipementId === equipement.id && intervention.statut === "EN_COURS");
+    let statut = "En service";
+    if (activeIntervention?.type === "PANNE") statut = "En panne";
+    if (activeIntervention?.type === "MAINTENANCE") statut = "En maintenance";
+    if (activeIntervention?.type === "ARRET_PROGRAMME") statut = "À l'arrêt";
+
+    return {
+        heuresThéoriques,
+        heuresArret,
+        heuresMarche,
+        disponibilite,
+        joursDepuisMiseEnService,
+        dateMiseEnService,
+        statut
+    };
+};
+
+const updateAllEquipementCounters = () => {
+    equipements.forEach((eq) => {
+        const counters = computeEquipementCounters(eq, interventions);
+        eq.compteurHeures = counters.heuresMarche;
+        eq.compteurTheoriques = counters.heuresThéoriques;
+        eq.compteurArret = counters.heuresArret;
+        eq.disponibilite = counters.disponibilite;
+        eq.statutCalcule = counters.statut;
+    });
+};
+
+const renderInterventionsHistoryRows = (equipementId, withActions = false) => {
+    const rows = interventions
+        .filter((item) => item.equipementId === equipementId)
+        .sort((a, b) => new Date(b.dateArret) - new Date(a.dateArret))
+        .map((item) => {
+            const duree = item.dureeReelleHeures ?? (toDateValue(item.dateArret) ? ((toDateValue(item.dateReprise) || new Date()) - toDateValue(item.dateArret)) / 3600000 : null);
+            return `<tr>
+                <td>${item.type}</td>
+                <td>${item.motif || "-"}</td>
+                <td>${formatDateTimeValue(item.dateArret)}</td>
+                <td>${formatDateTimeValue(item.dateReprise)}</td>
+                <td>${duree != null ? Number(duree.toFixed(1)).toLocaleString("fr-FR") : "-"} </td>
+                <td><span class="badge ${item.statut === "EN_COURS" ? "bg-warning text-dark" : "bg-success"}">${item.statut}</span></td>
+                <td>${withActions ? `${item.statut === "EN_COURS" ? `<button class="btn btn-outline-success btn-sm me-1" data-action="close-intervention" data-id="${item.id}"><i class="fa-solid fa-check"></i> Clôturer</button>` : ""}<button class="btn btn-outline-danger btn-sm" data-action="delete-intervention" data-id="${item.id}"><i class="fa-solid fa-trash"></i></button>` : "-"}</td>
+            </tr>`;
+        })
+        .join("");
+    return rows || `<tr><td colspan="7" class="text-center text-muted">Aucune intervention.</td></tr>`;
+};
+
+const renderEquipementCountersPanel = (form, equipement) => {
+    if (!form || !equipement) {
+        return;
+    }
+    const counters = computeEquipementCounters(equipement, interventions);
+    const panel = form.querySelector("[data-equip-counters-display]");
+    const historyBody = form.querySelector("[data-equip-interventions-history]");
+    if (panel) {
+        const dispoClass = getDisponibiliteClass(counters.disponibilite);
+        panel.innerHTML = `
+            <div class="row g-3">
+                <div class="col-md-6"><div class="border rounded p-3"><div class="text-muted small"><i class="fa-solid fa-clock me-1"></i>Heures théoriques de marche</div><div class="fw-semibold fs-5">${formatHourValue(counters.heuresThéoriques)}</div></div></div>
+                <div class="col-md-6"><div class="border rounded p-3"><div class="text-muted small"><i class="fa-solid fa-pause-circle me-1 text-warning"></i>Heures d'arrêt total</div><div class="fw-semibold fs-5">${Number(counters.heuresArret || 0).toLocaleString("fr-FR")} h</div></div></div>
+                <div class="col-md-6"><div class="border rounded p-3"><div class="text-muted small"><i class="fa-solid fa-play-circle me-1 text-success"></i>Heures de marche effectives</div><div class="fw-semibold fs-5">${formatHourValue(counters.heuresMarche)}</div></div></div>
+                <div class="col-md-6"><div class="border rounded p-3"><div class="text-muted small"><i class="fa-solid fa-info-circle me-1"></i>Statut calculé</div><div class="mt-1"><span class="badge ${getStatutBadgeClass(counters.statut)}">${counters.statut}</span></div></div></div>
+            </div>
+            <div class="border rounded p-3 mt-3">
+                <div class="text-muted small mb-2"><i class="fa-solid fa-chart-pie me-1"></i>Taux de disponibilité</div>
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar ${dispoClass}" role="progressbar" style="width: ${counters.disponibilite}%">${Number(counters.disponibilite).toLocaleString("fr-FR")}%</div>
+                </div>
+            </div>`;
+    }
+    if (historyBody) {
+        historyBody.innerHTML = renderInterventionsHistoryRows(equipement.id, true);
+    }
+};
+
+const refreshEquipementAfterInterventionChange = (equipementId) => {
+    updateAllEquipementCounters();
+    const form = document.getElementById("form-equipements");
+    const equipement = equipements.find((eq) => eq.id === equipementId);
+    if (form && equipement) {
+        renderEquipementCountersPanel(form, equipement);
+    }
+    checkStockAlerts();
+    renderEquipTables();
+};
+
+const saveInterventionFromForm = async () => {
+    const form = document.getElementById("form-equipements");
+    const equipementId = form?.dataset.currentEquipementId;
+    if (!form || !equipementId) {
+        showToast("Enregistrez d'abord l'équipement.", "warning");
+        return;
+    }
+    const type = form.querySelector("[name='intervention-type']:checked")?.value;
+    const motif = (form.querySelector("[data-intervention-motif]")?.value || "").trim();
+    const dateArret = form.querySelector("[data-intervention-date-arret]")?.value;
+    const dateReprise = form.querySelector("[data-intervention-date-reprise]")?.value || null;
+
+    if (!type || !motif || !dateArret) {
+        showToast("Type, motif et date d'arrêt sont requis.", "warning");
+        return;
+    }
+    const arretDate = toDateValue(dateArret);
+    const repriseDate = toDateValue(dateReprise);
+    if (!arretDate || (repriseDate && repriseDate < arretDate)) {
+        showToast("Dates d'intervention invalides.", "warning");
+        return;
+    }
+
+    const intervention = {
+        equipementId,
+        type,
+        motif,
+        dateArret: arretDate.toISOString(),
+        dateReprise: repriseDate ? repriseDate.toISOString() : null,
+        dureeReelleHeures: repriseDate ? Number((((repriseDate - arretDate) / 3600000)).toFixed(1)) : null,
+        statut: repriseDate ? "CLOTURE" : "EN_COURS",
+        saisiPar: currentUser,
+        observation: "",
+        createdAt: new Date().toISOString(),
+        entrepriseId: ENTREPRISE_ID
+    };
+    fetch("?handler=SaveIntervention", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            RequestVerificationToken: getAntiforgeryToken()
+        },
+        body: JSON.stringify(intervention)
+    })
+        .then((res) => res.json())
+        .then(async (result) => {
+            if (!result.success) {
+                showToast(`Erreur: ${result.error}`, "danger");
+                return;
+            }
+            form.querySelector("[data-intervention-motif]").value = "";
+            form.querySelector("[data-intervention-date-reprise]").value = "";
+            await loadAllData();
+            refreshEquipementAfterInterventionChange(equipementId);
+            showToast("Arrêt enregistré avec succès", "success");
+        })
+        .catch((error) => showToast(`Erreur: ${error.message}`, "danger"));
+};
+
+const closeIntervention = (interventionId) => {
+    const intervention = interventions.find((item) => item.id === interventionId);
+    if (!intervention || intervention.statut !== "EN_COURS") {
+        return;
+    }
+    const response = window.prompt("Date et heure de reprise (YYYY-MM-DDTHH:mm)", new Date().toISOString().slice(0, 16));
+    if (!response) {
+        return;
+    }
+    const dateReprise = toDateValue(response);
+    const dateArret = toDateValue(intervention.dateArret);
+    if (!dateReprise || !dateArret || dateReprise < dateArret) {
+        showToast("Date de reprise invalide.", "warning");
+        return;
+    }
+    intervention.dateReprise = dateReprise.toISOString();
+    intervention.dureeReelleHeures = Number((((dateReprise - dateArret) / 3600000)).toFixed(1));
+    intervention.statut = "CLOTURE";
+    refreshEquipementAfterInterventionChange(intervention.equipementId);
+    showToast("Intervention clôturée avec succès", "success");
+};
+
+const deleteIntervention = (interventionId) => {
+    const index = interventions.findIndex((item) => item.id === interventionId);
+    if (index < 0) {
+        return;
+    }
+    const [removed] = interventions.splice(index, 1);
+    refreshEquipementAfterInterventionChange(removed.equipementId);
+    showToast("Intervention supprimée", "info");
+};
+
 const renderEquipActions = (level, id) => {
     return `
         <div class="gmao-action-btns d-flex gap-1">
@@ -2085,16 +2432,27 @@ const renderEquipTable = (level) => {
                     </tr>`;
             }
             case "equipements":
+                {
+                    const dispo = Number(item.disponibilite ?? 0);
+                    const dispoClass = getDisponibiliteClass(dispo);
+                    const statutAffiche = item.statutCalcule || item.statut || "En service";
                 return `
                     <tr>
                         <td>${item.code}</td>
                         <td>${item.nom}</td>
                         <td>${item.marque}</td>
                         <td>${renderCriticiteBadge(item.criticite)}</td>
-                        <td>${renderStatutBadge(item.statut)}</td>
+                        <td>${renderStatutBadge(statutAffiche)}</td>
+                        <td>${formatHourValue(item.compteurHeures || 0)}</td>
+                        <td>
+                            <div class="progress" style="height: 16px; min-width: 120px;">
+                                <div class="progress-bar ${dispoClass}" role="progressbar" style="width: ${dispo}%">${dispo.toLocaleString("fr-FR")}%</div>
+                            </div>
+                        </td>
                         <td>${item.serviceNom || ""}</td>
                         <td>${renderEquipActions(level, item.id)}</td>
                     </tr>`;
+                }
             default:
                 return "";
         }
@@ -2112,14 +2470,15 @@ const populateEquipSelects = (form, level) => {
     const familySelect = form.querySelector("[data-equip-family]");
     const subFamilySelect = form.querySelector("[data-equip-subfamily]");
 
+    const unclassifiedLabel = level === "equipements" ? "-- Non classifié --" : "Sélectionner";
     if (groupSelect) {
-        groupSelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(groupesEquipements)}`;
+        groupSelect.innerHTML = `<option value="">${unclassifiedLabel}</option>${buildEquipOptions(groupesEquipements)}`;
     }
     if (familySelect) {
-        familySelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(famillesEquipements)}`;
+        familySelect.innerHTML = `<option value="">${unclassifiedLabel}</option>${buildEquipOptions(famillesEquipements)}`;
     }
     if (subFamilySelect) {
-        subFamilySelect.innerHTML = `<option value="">Sélectionner</option>${buildEquipOptions(sousFamillesEquipements)}`;
+        subFamilySelect.innerHTML = `<option value="">${unclassifiedLabel}</option>${buildEquipOptions(sousFamillesEquipements)}`;
     }
 
     if (level === "familles") {
@@ -2238,6 +2597,19 @@ const openEquipForm = (level, mode, itemId) => {
         form.querySelectorAll("[name='statut']").forEach((radio) => {
             radio.checked = radio.value === (existing?.statut ?? "En service");
         });
+        form.dataset.currentEquipementId = existing?.id ?? "";
+        const dateArretInput = form.querySelector("[data-intervention-date-arret]");
+        if (dateArretInput && !dateArretInput.value) {
+            dateArretInput.value = new Date().toISOString().slice(0, 16);
+        }
+        if (existing) {
+            renderEquipementCountersPanel(form, existing);
+        } else {
+            const panel = form.querySelector("[data-equip-counters-display]");
+            const historyBody = form.querySelector("[data-equip-interventions-history]");
+            if (panel) panel.innerHTML = '<div class="text-muted">Enregistrez l\'équipement pour activer le calcul automatique.</div>';
+            if (historyBody) historyBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Aucune intervention.</td></tr>';
+        }
     }
 
     if (level === "familles") {
@@ -2311,7 +2683,7 @@ const readEquipFormValues = (level) => {
     return values;
 };
 
-const saveEquipForm = (level) => {
+const saveEquipForm = async (level) => {
     const values = readEquipFormValues(level);
     if (!values) {
         return;
@@ -2342,6 +2714,29 @@ const saveEquipForm = (level) => {
         values.serviceNom = service?.nom ?? "";
     }
 
+    if (level === "equipements") {
+        try {
+            const response = await fetch("?handler=SaveEquipement", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    RequestVerificationToken: getAntiforgeryToken()
+                },
+                body: JSON.stringify({ ...values, entrepriseId: ENTREPRISE_ID })
+            });
+            const result = await response.json();
+            if (result.success) {
+                await loadAllData();
+                equipFormModals[level]?.hide();
+            } else {
+                showToast(`Erreur: ${result.error}`, "danger");
+            }
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, "danger");
+        }
+        return;
+    }
+
     if (isEdit && equipFormContext?.itemId) {
         const index = items.findIndex((item) => item.id === equipFormContext.itemId);
         if (index >= 0) {
@@ -2358,6 +2753,7 @@ const saveEquipForm = (level) => {
     }
 
     setEquipData(level, items);
+    if (level === "equipements") updateAllEquipementCounters();
     renderEquipTables();
     equipFormModals[level]?.hide();
 };
@@ -2380,6 +2776,7 @@ const renderStatutBadge = (value) => {
         "En service": "statut-service",
         "En panne": "statut-panne",
         "En maintenance": "statut-maintenance",
+        "À l'arrêt": "statut-maintenance",
         "En standby": "statut-standby",
         "Hors service": "statut-hors-service"
     };
@@ -2395,6 +2792,8 @@ const openEquipDetail = (itemId) => {
     }
 
     const documents = (item.documents ?? []).map((doc) => `<li><i class="fa-solid fa-file"></i> ${doc.nom}</li>`).join("") || "<li>Aucun document</li>";
+    const counters = computeEquipementCounters(item, interventions);
+    const dispoClass = getDisponibiliteClass(counters.disponibilite);
     body.innerHTML = `
         <div class="equip-detail-header">
             <div class="equip-photo">${item.photo ? `<img src="${item.photo}" alt="Photo" />` : "<i class=\"fa-solid fa-camera\"></i>"}</div>
@@ -2403,7 +2802,7 @@ const openEquipDetail = (itemId) => {
                 <div class="fw-bold fs-4">${item.nom}</div>
                 <div class="d-flex flex-wrap gap-2 mt-2">
                     ${renderCriticiteBadge(item.criticite)}
-                    ${renderStatutBadge(item.statut)}
+                    ${renderStatutBadge(item.statutCalcule || item.statut)}
                     <span class="badge bg-secondary">${item.groupeNom} &gt; ${item.familleNom} &gt; ${item.sousFamilleNom}</span>
                 </div>
                 <div class="d-flex gap-2 mt-3">
@@ -2422,13 +2821,30 @@ const openEquipDetail = (itemId) => {
             <div class="col-md-6"><div class="text-muted small">Prix achat</div><div class="fw-semibold">${item.prixAchat || "-"}</div></div>
             <div class="col-md-6"><div class="text-muted small">Date mise en service</div><div class="fw-semibold">${item.dateMiseEnService || "-"}</div></div>
             <div class="col-md-6"><div class="text-muted small">Garantie</div><div class="fw-semibold">${item.periodeGarantie || "-"} ${item.periodeGarantieUnite || ""}</div></div>
-            <div class="col-md-6"><div class="text-muted small">Bâtiment</div><div class="fw-semibold">${item.batiment || "-"}</div></div>
-            <div class="col-md-6"><div class="text-muted small">Salle</div><div class="fw-semibold">${item.salle || "-"}</div></div>
-            <div class="col-md-6"><div class="text-muted small">Ligne</div><div class="fw-semibold">${item.ligne || "-"}</div></div>
-            <div class="col-md-6"><div class="text-muted small">Compteur heures</div><div class="fw-semibold">${item.compteurHeures || "-"}</div></div>
             <div class="col-md-6"><div class="text-muted small">Compteur cycles</div><div class="fw-semibold">${item.compteurCycles || "-"}</div></div>
             <div class="col-md-6"><div class="text-muted small">Compteur km</div><div class="fw-semibold">${item.compteurKm || "-"}</div></div>
             <div class="col-md-6"><div class="text-muted small">Seuil alerte</div><div class="fw-semibold">${item.seuilAlerte || "-"}</div></div>
+        </div>
+        <div class="mt-4">
+            <div class="fw-semibold mb-2">Compteurs & Disponibilité</div>
+            <div class="row g-3">
+                <div class="col-md-3"><div class="border rounded p-3"><div class="text-muted small">Heures théor.</div><div class="fw-semibold">${formatHourValue(counters.heuresThéoriques)}</div></div></div>
+                <div class="col-md-3"><div class="border rounded p-3"><div class="text-muted small">Heures d'arrêt</div><div class="fw-semibold">${Number(counters.heuresArret).toLocaleString("fr-FR")} h</div></div></div>
+                <div class="col-md-3"><div class="border rounded p-3"><div class="text-muted small">Heures marche</div><div class="fw-semibold">${formatHourValue(counters.heuresMarche)}</div></div></div>
+                <div class="col-md-3"><div class="border rounded p-3"><div class="text-muted small">Disponibilité</div><div class="fw-semibold">${Number(counters.disponibilite).toLocaleString("fr-FR")}%</div></div></div>
+            </div>
+            <div class="progress mt-2" style="height: 14px;">
+                <div class="progress-bar ${dispoClass}" role="progressbar" style="width:${counters.disponibilite}%"></div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <div class="fw-semibold mb-2">Historique des interventions</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>Type</th><th>Motif</th><th>Date arrêt</th><th>Date reprise</th><th>Durée (h)</th><th>Statut</th><th>Actions</th></tr></thead>
+                    <tbody>${renderInterventionsHistoryRows(item.id, false)}</tbody>
+                </table>
+            </div>
         </div>
         <div class="mt-3">
             <div class="fw-semibold mb-2">Documents</div>
@@ -2658,14 +3074,15 @@ const populateOrganSelects = (form, level) => {
     const familySelect = form.querySelector("[data-organe-family]");
     const subFamilySelect = form.querySelector("[data-organe-subfamily]");
 
+    const unclassifiedLabel = level === "organes" ? "-- Non classifié --" : "Sélectionner";
     if (groupSelect) {
-        groupSelect.innerHTML = `<option value="">Sélectionner</option>${groupesOrganes.map((grp) => `<option value="${grp.id}">${grp.nom}</option>`).join("")}`;
+        groupSelect.innerHTML = `<option value="">${unclassifiedLabel}</option>${groupesOrganes.map((grp) => `<option value="${grp.id}">${grp.nom}</option>`).join("")}`;
     }
     if (familySelect) {
-        familySelect.innerHTML = "<option value=\"\">Sélectionner</option>";
+        familySelect.innerHTML = `<option value="">${unclassifiedLabel}</option>`;
     }
     if (subFamilySelect) {
-        subFamilySelect.innerHTML = "<option value=\"\">Sélectionner</option>";
+        subFamilySelect.innerHTML = `<option value="">${unclassifiedLabel}</option>`;
     }
 
     if (level === "familles") {
@@ -3063,6 +3480,32 @@ const computeArticleStats = (article) => {
     };
 };
 
+const articleSeedArt1Base = {
+    id: "art-1",
+    code: "ART-0001",
+    designation: "Roulement SKF 6205",
+    type: "Pièce de rechange",
+    uniteMesure: "Unité",
+    referenceInterne: "INT-554",
+    referenceFabricant: "SKF-6205",
+    marque: "SKF",
+    fournisseur: "SKF Algérie",
+    fournisseurId: "frs-1",
+    stockActuel: 5,
+    stockMinimum: 3,
+    stockCritique: 1,
+    qteReapprovisionnement: 10,
+    prixUnitaire: 8500,
+    emplacementStock: "Rack A3",
+    sousFamilleId: null,
+    familleId: null,
+    groupeId: null,
+    organeLinks: [],
+    notes: "Roulement standard pour pompes centrifuges",
+    createdAt: "2025-01-15T08:00:00.000Z"
+};
+articles = [computeArticleStats(articleSeedArt1Base)];
+
 const renderStockStatusBadge = (status) => {
     const map = {
         OK: "stock-badge-ok",
@@ -3194,14 +3637,15 @@ const populateArticleSelects = (form, level) => {
     const familySelect = form.querySelector("[data-article-family]");
     const subFamilySelect = form.querySelector("[data-article-subfamily]");
 
+    const unclassifiedLabel = level === "articles" ? "-- Non classifié --" : "Sélectionner";
     if (groupSelect) {
-        groupSelect.innerHTML = `<option value="">Sélectionner</option>${groupesArticles.map((grp) => `<option value="${grp.id}">${grp.nom}</option>`).join("")}`;
+        groupSelect.innerHTML = `<option value="">${unclassifiedLabel}</option>${groupesArticles.map((grp) => `<option value="${grp.id}">${grp.nom}</option>`).join("")}`;
     }
     if (familySelect) {
-        familySelect.innerHTML = "<option value=\"\">Sélectionner</option>";
+        familySelect.innerHTML = `<option value="">${unclassifiedLabel}</option>`;
     }
     if (subFamilySelect) {
-        subFamilySelect.innerHTML = "<option value=\"\">Sélectionner</option>";
+        subFamilySelect.innerHTML = `<option value="">${unclassifiedLabel}</option>`;
     }
 
     if (level === "familles") {
@@ -3232,6 +3676,45 @@ const cascadeArticleFamilies = (groupId, familySelect, subFamilySelect) => {
 const cascadeArticleSubFamilies = (familyId, subFamilySelect) => {
     const subs = sousFamillesArticles.filter((sf) => sf.familleId === familyId);
     subFamilySelect.innerHTML = `<option value="">Sélectionner</option>${subs.map((sf) => `<option value="${sf.id}">${sf.nom}</option>`).join("")}`;
+};
+
+const refreshArticleFormAfterArticleQuickCreate = (role, item) => {
+    const form = document.getElementById("form-articles");
+    if (!form || !item) {
+        return;
+    }
+
+    const groupSelect = form.querySelector("[data-article-group='articles']");
+    const familySelect = form.querySelector("[data-article-family='articles']");
+    const subFamilySelect = form.querySelector("[data-article-subfamily='articles']");
+
+    populateArticleSelects(form, "articles");
+
+    if (role === "groupe") {
+        if (groupSelect) {
+            groupSelect.value = item.id;
+        }
+        if (familySelect && subFamilySelect) {
+            cascadeArticleFamilies(item.id, familySelect, subFamilySelect);
+        }
+        return;
+    }
+
+    if (role === "famille" && groupSelect && familySelect && subFamilySelect) {
+        groupSelect.value = item.groupeId ?? "";
+        cascadeArticleFamilies(item.groupeId ?? "", familySelect, subFamilySelect);
+        familySelect.value = item.id;
+        cascadeArticleSubFamilies(item.id, subFamilySelect);
+        return;
+    }
+
+    if (role === "sousfamille" && groupSelect && familySelect && subFamilySelect) {
+        groupSelect.value = item.groupeId ?? "";
+        cascadeArticleFamilies(item.groupeId ?? "", familySelect, subFamilySelect);
+        familySelect.value = item.familleId ?? "";
+        cascadeArticleSubFamilies(item.familleId ?? "", subFamilySelect);
+        subFamilySelect.value = item.id;
+    }
 };
 
 const renderArticleTypeCards = (form, value) => {
@@ -3446,7 +3929,7 @@ const readArticleFormValues = (level) => {
     return values;
 };
 
-const saveArticleForm = (level) => {
+const saveArticleForm = async (level) => {
     const values = readArticleFormValues(level);
     if (!values) {
         return;
@@ -3473,6 +3956,29 @@ const saveArticleForm = (level) => {
         values.familleNom = famille?.nom ?? "";
         values.sousFamilleNom = sousFamille?.nom ?? "";
         Object.assign(values, computeArticleStats(values));
+    }
+
+    if (level === "articles") {
+        try {
+            const response = await fetch("?handler=SaveArticle", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    RequestVerificationToken: getAntiforgeryToken()
+                },
+                body: JSON.stringify({ ...values, entrepriseId: ENTREPRISE_ID })
+            });
+            const result = await response.json();
+            if (result.success) {
+                await loadAllData();
+                articleFormModals[level]?.hide();
+            } else {
+                showToast(`Erreur: ${result.error}`, "danger");
+            }
+        } catch (error) {
+            showToast(`Erreur: ${error.message}`, "danger");
+        }
+        return;
     }
 
     if (isEdit && articleFormContext?.itemId) {
@@ -3901,9 +4407,9 @@ const generateFRNCode = () => {
 const saveEntreeStock = () => {
     const articleId = document.getElementById("entree-article")?.value;
     const qte = Number(document.getElementById("entree-quantite")?.value || 0);
-    if (!articleId || qte < 1) return;
+    if (!articleId || qte < 1) return false;
     const article = articles.find((a) => a.id === articleId);
-    if (!article) return;
+    if (!article) return false;
     const qteBefore = Number(article.stockActuel) || 0;
     article.stockActuel = qteBefore + qte;
     article.dateDernierMouvement = new Date().toISOString();
@@ -3928,7 +4434,7 @@ const saveEntreeStock = () => {
         numeroBC: document.getElementById("entree-bc")?.value || "",
         numeroBL: document.getElementById("entree-bl")?.value || "",
         dateMouvement: document.getElementById("entree-date")?.value || new Date().toISOString(),
-        saisiPar: diUser?.name ?? "Système",
+        saisiPar: currentUser ?? diUser?.name ?? "Système",
         emplacementSource: "",
         emplacementDest: document.getElementById("entree-emplacement")?.value || article.emplacementStock || "",
         observation: document.getElementById("entree-observation")?.value || "",
@@ -3938,17 +4444,18 @@ const saveEntreeStock = () => {
     renderArticleTables();
     checkStockAlerts();
     showToast(`✅ Entrée enregistrée. Stock: ${article.stockActuel}`, "success");
+    return true;
 };
 
 const saveSortieStock = () => {
     const articleId = document.getElementById("sortie-article")?.value;
     const qte = Number(document.getElementById("sortie-quantite")?.value || 0);
     const article = articles.find((a) => a.id === articleId);
-    if (!article || qte < 1) return;
+    if (!article || qte < 1) return false;
     const qteBefore = Number(article.stockActuel) || 0;
     if (qte > qteBefore) {
         showToast("Quantité insuffisante en stock", "warning");
-        return;
+        return false;
     }
     article.stockActuel = Math.max(0, qteBefore - qte);
     article.dateDernierMouvement = new Date().toISOString();
@@ -3974,7 +4481,7 @@ const saveSortieStock = () => {
         fournisseurId: null, fournisseurNom: null,
         numeroBC: "", numeroBL: "",
         dateMouvement: document.getElementById("sortie-date")?.value || new Date().toISOString(),
-        saisiPar: diUser?.name ?? "Système",
+        saisiPar: currentUser ?? diUser?.name ?? "Système",
         emplacementSource: document.getElementById("sortie-emplacement")?.value || article.emplacementStock || "",
         emplacementDest: "",
         observation: document.getElementById("sortie-observation")?.value || "",
@@ -3984,13 +4491,14 @@ const saveSortieStock = () => {
     else if (article.stockActuel <= (Number(article.stockMinimum) || 0)) showToast(`⚠️ Stock faible: ${article.designation}`, "warning");
     renderStockTabs();
     checkStockAlerts();
+    return true;
 };
 
 const saveAjustementStock = () => {
     const articleId = document.getElementById("ajust-article")?.value;
     const nouveau = Number(document.getElementById("ajust-stock-nouveau")?.value || 0);
     const article = articles.find((a) => a.id === articleId);
-    if (!article || nouveau < 0) return;
+    if (!article || nouveau < 0) return false;
     const avant = Number(article.stockActuel) || 0;
     const ecart = nouveau - avant;
     article.stockActuel = nouveau;
@@ -4012,7 +4520,7 @@ const saveAjustementStock = () => {
         fournisseurId: null, fournisseurNom: null,
         numeroBC: "", numeroBL: "",
         dateMouvement: document.getElementById("ajust-date")?.value || new Date().toISOString(),
-        saisiPar: diUser?.name ?? "Système",
+        saisiPar: currentUser ?? diUser?.name ?? "Système",
         emplacementSource: article.emplacementStock || "",
         emplacementDest: article.emplacementStock || "",
         observation: document.getElementById("ajust-observation")?.value || "",
@@ -4021,6 +4529,7 @@ const saveAjustementStock = () => {
     renderStockTabs();
     checkStockAlerts();
     showToast(`🔧 Stock ajusté. Écart: ${ecart}`, "info");
+    return true;
 };
 
 const liverCommande = (commandeId) => {
@@ -4053,7 +4562,7 @@ const liverCommande = (commandeId) => {
             numeroBC: commande.numero,
             numeroBL: "",
             dateMouvement: new Date().toISOString(),
-            saisiPar: diUser?.name ?? "Système",
+            saisiPar: currentUser ?? diUser?.name ?? "Système",
             emplacementSource: "",
             emplacementDest: article.emplacementStock || "",
             observation: `Livraison commande ${commande.numero}`,
@@ -4107,9 +4616,10 @@ const populateStockSelects = () => {
 };
 
 const renderField = (field, value, entityKey) => {
-    const requiredClass = field.required ? "gmao-required" : "";
+    const isRequired = field.required === true;
+    const requiredClass = isRequired ? "gmao-required" : "";
     const inputId = `${entityKey}-${field.name}`;
-    const requiredAttr = field.required ? "required" : "";
+    const requiredAttr = isRequired ? "required" : "";
     const valueAttr = value ?? "";
 
     if (field.type === "textarea") {
@@ -5084,6 +5594,23 @@ document.addEventListener("click", (event) => {
     const itemId = target.dataset.id;
     const childEntity = target.dataset.child;
 
+    if (action === "save-intervention") {
+        saveInterventionFromForm();
+        return;
+    }
+    if (action === "close-intervention" && itemId) {
+        closeIntervention(itemId);
+        return;
+    }
+    if (action === "delete-intervention" && itemId) {
+        deleteIntervention(itemId);
+        return;
+    }
+    if (action === "open-planning-settings") {
+        showToast("La page de paramétrage du planning sera ajoutée prochainement.", "info");
+        return;
+    }
+
     if (action === "create" && entityKey) {
         openFormModal(entityKey, "create");
     }
@@ -5267,9 +5794,18 @@ document.addEventListener("click", (event) => {
         populateStockSelects();
         bsStockAjustementModal?.show();
     }
-    if (action === "save-entree") { saveEntreeStock(); bsStockEntreeModal?.hide(); }
-    if (action === "save-sortie") { saveSortieStock(); bsStockSortieModal?.hide(); }
-    if (action === "save-ajustement") { saveAjustementStock(); bsStockAjustementModal?.hide(); }
+    if (action === "save-entree") {
+        const saved = saveEntreeStock();
+        if (saved) bsStockEntreeModal?.hide();
+    }
+    if (action === "save-sortie") {
+        const saved = saveSortieStock();
+        if (saved) bsStockSortieModal?.hide();
+    }
+    if (action === "save-ajustement") {
+        const saved = saveAjustementStock();
+        if (saved) bsStockAjustementModal?.hide();
+    }
     if (action === "new-commande") {
         stockCommandeContextId = null;
         populateStockSelects();
@@ -6868,7 +7404,7 @@ const closeOT = (otId, piecesConsommees, coutMOReel, rapport, recommandations, n
             fournisseurId: null,
             fournisseurNom: null,
             dateMouvement: new Date().toISOString(),
-            saisiPar: diUser?.name ?? "Système",
+            saisiPar: currentUser ?? diUser?.name ?? "Système",
             observation: `Clôture OT ${ot.numero}`,
             createdAt: new Date().toISOString()
         });
@@ -8594,6 +9130,16 @@ const initBootstrap = () => {
 };
 
 function openQuickCreateModal(type) {
+    const modalEl = document.getElementById("modal-quick-create");
+    const qcTitle = document.getElementById("quick-create-title");
+    const qcCode = document.getElementById("quick-create-code");
+    const qcNom = document.getElementById("quick-create-nom");
+    const parentRow = document.getElementById("quick-create-parent-row");
+    const parentLabel = document.getElementById("quick-create-parent-label");
+    if (!modalEl || !qcTitle || !qcCode || !qcNom || !bootstrapAvailable) {
+        return;
+    }
+
     const configs = {
         "groupe-equip": {
             title: "Nouveau Groupe Équipement",
@@ -8623,26 +9169,58 @@ function openQuickCreateModal(type) {
             parentSelectSelector: "[data-equip-family='equipements']",
             parentArray: famillesEquipements,
             parentKey: "familleId"
+        },
+        "groupe-article": {
+            title: "Nouveau Groupe Articles",
+            prefix: articleConfigs.groupes.prefix,
+            array: groupesArticles,
+            articleQuickRole: "groupe",
+            showParent: false
+        },
+        "famille-article": {
+            title: "Nouvelle Famille Articles",
+            prefix: articleConfigs.familles.prefix,
+            array: famillesArticles,
+            articleQuickRole: "famille",
+            showParent: true,
+            parentLabel: "Groupe",
+            parentSelectSelector: "[data-article-group='articles']",
+            parentArray: groupesArticles,
+            parentKey: "groupeId"
+        },
+        "sousfamille-article": {
+            title: "Nouvelle Sous-famille Articles",
+            prefix: articleConfigs.sousfamilles.prefix,
+            array: sousFamillesArticles,
+            articleQuickRole: "sousfamille",
+            showParent: true,
+            parentLabel: "Famille",
+            parentSelectSelector: "[data-article-family='articles']",
+            parentArray: famillesArticles,
+            parentKey: "familleId"
         }
     };
 
     const cfg = configs[type];
-    if (!cfg) return;
+    if (!cfg) {
+        return;
+    }
 
     window._quickCreateConfig = cfg;
-    document.getElementById("quickCreateTitle").textContent = cfg.title;
-    const nextNum = String(cfg.array.length + 1).padStart(4, "0");
-    document.getElementById("quickCreateCode").value = `${cfg.prefix}-${nextNum}`;
-    document.getElementById("quickCreateNom").value = "";
-    document.getElementById("quickCreateNom").classList.remove("is-invalid");
 
-    const parentRow = document.getElementById("quickCreateParentRow");
-    if (cfg.showParent && parentRow) {
+    qcTitle.textContent = cfg.title;
+    const nextNum = String(cfg.array.length + 1).padStart(4, "0");
+    const codeSep = cfg.prefix.endsWith("-") ? "" : "-";
+    qcCode.value = `${cfg.prefix}${codeSep}${nextNum}`;
+    qcNom.value = "";
+    qcNom.classList.remove("is-invalid");
+
+    if (cfg.showParent && parentRow && parentLabel) {
         const parentSelect = document.querySelector(cfg.parentSelectSelector);
         const parentId = parentSelect?.value;
-        const parentItem = cfg.parentArray.find((item) => item.id === parentId);
+        const parentItem = cfg.parentArray.find((entry) => entry.id === parentId);
         if (parentItem) {
-            document.getElementById("quickCreateParentLabel").textContent = `${cfg.parentLabel}: ${parentItem.nom}`;
+            parentLabel.textContent = `${cfg.parentLabel}: ${parentItem.nom}`;
             parentRow.style.display = "block";
         } else {
             parentRow.style.display = "none";
@@ -8651,35 +9229,110 @@ function openQuickCreateModal(type) {
         parentRow.style.display = "none";
     }
 
-    const modal = new bootstrap.Modal(document.getElementById("quickCreateModal"));
+    const modal = new bootstrap.Modal(modalEl);
     modal.show();
 }
 
 function confirmQuickCreate() {
     const cfg = window._quickCreateConfig;
-    if (!cfg) return;
+    const modalEl = document.getElementById("modal-quick-create");
+    if (!cfg || !modalEl) {
+        return;
+    }
 
-    const nomInput = document.getElementById("quickCreateNom");
+    const nomInput = document.getElementById("quick-create-nom");
+    const qcCodeEl = document.getElementById("quick-create-code");
+    if (!nomInput || !qcCodeEl) {
+        return;
+    }
+
+    let newItem;
+
+    if (cfg.articleQuickRole === "famille") {
+        const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
+        const groupeId = parentSelect?.value?.trim();
+        if (!groupeId) {
+            nomInput.classList.remove("is-invalid");
+            showToast("S\u00e9lectionnez un groupe article avant la cr\u00e9ation rapide.", "warning");
+            return;
+        }
+    }
+
+    if (cfg.articleQuickRole === "sousfamille") {
+        const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
+        const familleId = parentSelect?.value?.trim();
+        if (!familleId) {
+            nomInput.classList.remove("is-invalid");
+            showToast("S\u00e9lectionnez une famille article avant la cr\u00e9ation rapide.", "warning");
+            return;
+        }
+    }
+
     const nom = nomInput.value.trim();
     if (!nom) {
         nomInput.classList.add("is-invalid");
         return;
     }
 
-    const code = document.getElementById("quickCreateCode").value;
-    const newItem = { id: createId(), code, nom };
+    nomInput.classList.remove("is-invalid");
+    const code = qcCodeEl.value;
 
-    if (cfg.showParent && cfg.parentKey) {
-        const parentSelect = document.querySelector(cfg.parentSelectSelector);
-        newItem[cfg.parentKey] = parentSelect?.value ?? "";
-        const parentItem = cfg.parentArray.find((item) => item.id === newItem[cfg.parentKey]);
-        newItem[cfg.parentKey.replace("Id", "Nom")] = parentItem?.nom ?? "";
+    if (cfg.articleQuickRole) {
+        if (cfg.articleQuickRole === "groupe") {
+            newItem = { id: createId(), code, nom };
+        } else if (cfg.articleQuickRole === "famille") {
+            const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
+            const groupeId = parentSelect?.value ?? "";
+            const groupeRow = cfg.parentArray.find((g) => g.id === groupeId);
+            newItem = {
+                id: createId(),
+                code,
+                nom,
+                groupeId,
+                groupeNom: groupeRow?.nom ?? ""
+            };
+        } else if (cfg.articleQuickRole === "sousfamille") {
+            const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
+            const familleId = parentSelect?.value ?? "";
+            const familleRow = cfg.parentArray.find((f) => f.id === familleId);
+            const groupeRow = familleRow?.groupeId ? groupesArticles.find((g) => g.id === familleRow.groupeId) : null;
+            newItem = {
+                id: createId(),
+                code,
+                nom,
+                familleId,
+                familleNom: familleRow?.nom ?? "",
+                groupeId: familleRow?.groupeId ?? "",
+                groupeNom: familleRow?.groupeNom ?? groupeRow?.nom ?? ""
+            };
+        }
+    } else {
+        newItem = { id: createId(), code, nom };
+
+        if (cfg.showParent && cfg.parentKey) {
+            const parentSelect = document.querySelector(cfg.parentSelectSelector);
+            newItem[cfg.parentKey] = parentSelect?.value ?? "";
+            const parentItem = cfg.parentArray.find((item) => item.id === newItem[cfg.parentKey]);
+            const nomKey = cfg.parentKey.replace("Id", "Nom");
+            newItem[nomKey] = parentItem?.nom ?? "";
+        }
     }
 
     cfg.array.push(newItem);
-    bootstrap.Modal.getInstance(document.getElementById("quickCreateModal"))?.hide();
+
+    bootstrap.Modal.getInstance(modalEl)?.hide();
+
+    const role = cfg.articleQuickRole ?? null;
 
     setTimeout(() => {
+        if (role) {
+            refreshArticleFormAfterArticleQuickCreate(role, newItem);
+            renderArticleTables();
+            renderStockTabs();
+            showToast(`\u2705 ${newItem.nom} cr\u00e9\u00e9 et s\u00e9lectionn\u00e9`, "success");
+            return;
+        }
+
         const targetSelect = document.querySelector(cfg.targetSelect);
         if (targetSelect) {
             const option = document.createElement("option");
@@ -8689,7 +9342,7 @@ function confirmQuickCreate() {
             targetSelect.value = newItem.id;
             targetSelect.dispatchEvent(new Event("change"));
         }
-        showToast(`✅ ${newItem.nom} créé et sélectionné`, "success");
+        showToast(`\u2705 ${newItem.nom} cr\u00e9\u00e9 et s\u00e9lectionn\u00e9`, "success");
     }, 300);
 }
 
@@ -9366,7 +10019,7 @@ initOrgModals();
 initEquipModals();
 initOrganModals();
 initArticleModals();
-renderAllTables();
+loadAllData();
 renderDiTable();
 renderOtTable();
 renderBtTable();

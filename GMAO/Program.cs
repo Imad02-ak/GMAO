@@ -1,7 +1,22 @@
+using System.Text.Json;
+using GMAO.Data;
+using GMAO.Services;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorPages();
+builder.Services
+    .AddRazorPages()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+builder.Services.AddDbContext<GmaoDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("GmaoConnection")));
+builder.Services.AddScoped<IOrganisationService, OrganisationService>();
+builder.Services.AddScoped<IEquipementService, EquipementService>();
+builder.Services.AddScoped<IStockService, StockService>();
 builder.Services
     .AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -25,6 +40,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+GmaoDbSeeder.Seed(app.Services);
 
 app.UseAuthentication();
 app.UseAuthorization();

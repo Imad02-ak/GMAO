@@ -34,7 +34,8 @@
         }
     </style>
 </head>
-<body class="gmao-body" data-user-name="@userName" data-user-role="Responsable">
+<body class="gmao-body" data-user-name="@userName" data-user-role="Responsable" data-entreprise-id="@Model.EntrepriseId">
+    @Html.AntiForgeryToken()
     <nav class="gmao-navbar d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-link text-white p-0" id="sidebar-toggle" aria-label="Basculer le menu">
@@ -97,7 +98,6 @@
             <div class="sidebar-section-title">Arborescence technique</div>
             <a class="nav-link gmao-nav-link" data-view="view-tree" href="#view-tree"><i class="fa-solid fa-sitemap"></i><span class="sidebar-label">Arborescence complète</span></a>
             <div class="sidebar-label" style="font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; padding: 8px 16px 4px;">── ORGANISATIONNEL ──</div>
-            <a class="nav-link gmao-nav-link" data-view="view-entreprise" href="#view-entreprise"><i class="fa-solid fa-building-columns"></i><span class="sidebar-label">Entreprise</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-unites" href="#view-unites"><i class="fa-solid fa-industry"></i><span class="sidebar-label">Unités principales</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-divisions" href="#view-divisions"><i class="fa-solid fa-th-large"></i><span class="sidebar-label">Divisions</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-departements" href="#view-departements"><i class="fa-solid fa-warehouse"></i><span class="sidebar-label">Départements</span></a>
@@ -124,7 +124,7 @@
             <div class="sidebar-section-title">Ressources</div>
             <a class="nav-link gmao-nav-link" data-view="view-technicians" href="#view-technicians"><i class="fa-solid fa-users"></i><span class="sidebar-label">Techniciens &amp; équipes</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-suppliers" href="#view-suppliers"><i class="fa-solid fa-truck"></i><span class="sidebar-label">Fournisseurs</span></a>
-            <a class="nav-link gmao-nav-link" data-view="view-stock" href="#view-stock"><i class="fa-solid fa-boxes-stacking"></i><span class="sidebar-label">Stock</span></a>
+            <a class="nav-link gmao-nav-link" data-view="view-stock" href="#view-stock"><i class="fa-solid fa-warehouse text-warning"></i><span class="sidebar-label">Stock</span></a>
             <a class="nav-link gmao-nav-link" data-view="view-contracts" href="#view-contracts"><i class="fa-solid fa-file-contract"></i><span class="sidebar-label">Contrats de maintenance</span></a>
         </div>
 
@@ -997,15 +997,14 @@
                 </div>
                 <div class="filter-badge-container" data-filter-badge="divisions"></div>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" style="table-layout:fixed; width:100%">
                         <thead>
                             <tr>
-                                <th>Code</th>
-                                <th>Nom</th>
-                                <th>Unité parent</th>
-                                <th>Wilaya</th>
-                                <th>Responsable</th>
-                                <th>Actions</th>
+                                <th style="width:120px">Code</th>
+                                <th style="width:200px">Nom</th>
+                                <th style="width:180px">Unité parent</th>
+                                <th style="width:150px">Responsable</th>
+                                <th style="width:120px">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="table-divisions"></tbody>
@@ -1034,15 +1033,14 @@
                 </div>
                 <div class="filter-badge-container" data-filter-badge="departements"></div>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" style="table-layout:fixed; width:100%">
                         <thead>
                             <tr>
-                                <th>Code</th>
-                                <th>Nom</th>
-                                <th>Division parent</th>
-                                <th>Wilaya</th>
-                                <th>Chef</th>
-                                <th>Actions</th>
+                                <th style="width:120px">Code</th>
+                                <th style="width:200px">Nom</th>
+                                <th style="width:180px">Division parent</th>
+                                <th style="width:150px">Chef</th>
+                                <th style="width:120px">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="table-departements"></tbody>
@@ -1071,15 +1069,14 @@
                 </div>
                 <div class="filter-badge-container" data-filter-badge="services"></div>
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle" style="table-layout:fixed; width:100%">
                         <thead>
                             <tr>
-                                <th>Code</th>
-                                <th>Nom</th>
-                                <th>Département parent</th>
-                                <th>Bâtiment</th>
-                                <th>Chef</th>
-                                <th>Actions</th>
+                                <th style="width:120px">Code</th>
+                                <th style="width:200px">Nom</th>
+                                <th style="width:180px">Département parent</th>
+                                <th style="width:150px">Chef</th>
+                                <th style="width:120px">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="table-services"></tbody>
@@ -1116,6 +1113,8 @@
                                 <th>Marque</th>
                                 <th>Criticité</th>
                                 <th>Statut</th>
+                                <th>Compteur (h)</th>
+                                <th>Disponibilité</th>
                                 <th>Service</th>
                                 <th>Actions</th>
                             </tr>
@@ -1730,33 +1729,33 @@
                             <div class="tab-pane fade show active" id="equip-tab-catalogue" role="tabpanel">
                                 <div class="mb-3 text-uppercase text-muted fw-semibold">Classification catalogue</div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Groupe équipement</label>
+                                    <label class="form-label">Groupe équipement</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
-                                        <select class="form-select" id="equipGroupeSelect" data-field="groupeId" data-equip-group="equipements" required>
-                                            <option value="">-- Sélectionner --</option>
+                                        <select class="form-select" id="equipGroupeSelect" data-field="groupeId" data-equip-group="equipements">
+                                            <option value="">-- Non classifié --</option>
                                         </select>
                                         <button class="btn btn-outline-secondary" type="button" data-quick-create="groupe-equip" title="Créer un nouveau groupe"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
                                 </div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Famille</label>
+                                    <label class="form-label">Famille</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="fa-solid fa-folder"></i></span>
-                                        <select class="form-select" id="equipFamilleSelect" data-field="familleId" data-equip-family="equipements" required>
-                                            <option value="">-- Sélectionner --</option>
+                                        <select class="form-select" id="equipFamilleSelect" data-field="familleId" data-equip-family="equipements">
+                                            <option value="">-- Non classifié --</option>
                                         </select>
                                         <button class="btn btn-outline-secondary" type="button" data-quick-create="famille-equip" title="Créer une nouvelle famille"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
                                 </div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Sous-famille</label>
+                                    <label class="form-label">Sous-famille</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="fa-solid fa-folder-open"></i></span>
-                                        <select class="form-select" id="equipSousFamilleSelect" data-field="sousFamilleId" data-equip-subfamily="equipements" required>
-                                            <option value="">-- Sélectionner --</option>
+                                        <select class="form-select" id="equipSousFamilleSelect" data-field="sousFamilleId" data-equip-subfamily="equipements">
+                                            <option value="">-- Non classifié --</option>
                                         </select>
                                         <button class="btn btn-outline-secondary" type="button" data-quick-create="sousfamille-equip" title="Créer une nouvelle sous-famille"><i class="fa-solid fa-plus"></i></button>
                                     </div>
@@ -1772,13 +1771,6 @@
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
                                 </div>
-                                <div class="mb-3 gmao-form-group">
-                                    <label class="form-label">Localisation</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
-                                        <input class="form-control" type="text" data-field="localisation" readonly>
-                                    </div>
-                                </div>
 
                                 <div class="mb-3 text-uppercase text-muted fw-semibold">Identification</div>
                                 <div class="mb-3 gmao-form-group">
@@ -1790,7 +1782,7 @@
                                     <div class="form-text text-muted">Code généré automatiquement</div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label fw-semibold">Nom équipement <span class="text-danger">*</span></label>
+                                    <label class="form-label fw-semibold gmao-required">Nom équipement</label>
                                     <div class="input-group">
                                         <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
                                         <input type="text" class="form-control" data-field="nom" placeholder="Ex: Pompe centrifuge P-01" required>
@@ -1905,64 +1897,64 @@
                                     <label class="btn btn-outline-secondary" for="statut-hs">Hors service</label>
                                 </div>
 
-                                <div class="mt-3 text-uppercase text-muted fw-semibold">Localisation physique</div>
-                                <div class="row g-3">
-                                    <div class="col-md-4 gmao-form-group">
-                                        <label class="form-label">Bâtiment / Hall</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fa-solid fa-building"></i></span>
-                                            <input class="form-control" type="text" data-field="batiment">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 gmao-form-group">
-                                        <label class="form-label">Salle / Zone</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fa-solid fa-door-open"></i></span>
-                                            <input class="form-control" type="text" data-field="salle">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 gmao-form-group">
-                                        <label class="form-label">Ligne</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fa-solid fa-route"></i></span>
-                                            <input class="form-control" type="text" data-field="ligne">
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                             <div class="tab-pane fade" id="equip-tab-compteurs" role="tabpanel">
-                                <div class="mb-3 text-uppercase text-muted fw-semibold">Compteurs de fonctionnement</div>
-                                <div class="row g-3">
-                                    <div class="col-md-3 gmao-form-group">
-                                        <label class="form-label">Heures de marche</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fa-solid fa-clock"></i></span>
-                                            <input class="form-control" type="number" data-field="compteurHeures">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3 gmao-form-group">
-                                        <label class="form-label">Nombre de cycles</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fa-solid fa-sync"></i></span>
-                                            <input class="form-control" type="number" data-field="compteurCycles">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3 gmao-form-group">
-                                        <label class="form-label">Kilomètres / Distance</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fa-solid fa-road"></i></span>
-                                            <input class="form-control" type="number" data-field="compteurKm">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3 gmao-form-group">
-                                        <label class="form-label">Seuil d'alerte</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="fa-solid fa-bell"></i></span>
-                                            <input class="form-control" type="number" data-field="seuilAlerte">
-                                        </div>
+                                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                    <div>ℹ️ Calcul automatique basé sur le planning : Dimanche–Jeudi | 08h00–17h00 | 9h/jour</div>
+                                    <a href="#" data-action="open-planning-settings" class="small text-decoration-none">Modifier le planning →</a>
+                                </div>
+                                <div class="mb-3 text-uppercase text-muted fw-semibold">Compteurs calculés</div>
+                                <div data-equip-counters-display></div>
+
+                                <div class="mt-4 text-uppercase text-muted fw-semibold">Déclarer un arrêt machine</div>
+                                <div class="mb-3">
+                                    <label class="form-label">Type d'arrêt</label>
+                                    <div class="btn-group" role="group">
+                                        <input class="btn-check" type="radio" name="intervention-type" id="int-type-panne" value="PANNE" checked>
+                                        <label class="btn btn-outline-danger" for="int-type-panne">🔴 Panne</label>
+                                        <input class="btn-check" type="radio" name="intervention-type" id="int-type-maintenance" value="MAINTENANCE">
+                                        <label class="btn btn-outline-warning" for="int-type-maintenance">🔧 Maintenance</label>
+                                        <input class="btn-check" type="radio" name="intervention-type" id="int-type-arret" value="ARRET_PROGRAMME">
+                                        <label class="btn btn-outline-secondary" for="int-type-arret">⏸ Arrêt programmé</label>
                                     </div>
                                 </div>
-                                <div class="text-muted small mt-2">ⓘ Les compteurs peuvent être mis à jour manuellement ou via les rapports d'intervention.</div>
+                                <div class="mb-3">
+                                    <label class="form-label">Motif / Description</label>
+                                    <textarea class="form-control" rows="3" data-intervention-motif placeholder="Décrivez la raison de l'arrêt..."></textarea>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Date et heure d'arrêt</label>
+                                        <input class="form-control" type="datetime-local" data-intervention-date-arret value="">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Date et heure de reprise (optionnel)</label>
+                                        <input class="form-control" type="datetime-local" data-intervention-date-reprise>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary mt-3" data-action="save-intervention"><i class="fa-solid fa-save me-1"></i>Enregistrer l'arrêt</button>
+
+                                <div class="mt-4 text-uppercase text-muted fw-semibold">Historique des interventions</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Motif</th>
+                                                <th>Date arrêt</th>
+                                                <th>Date reprise</th>
+                                                <th>Durée (h)</th>
+                                                <th>Statut</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody data-equip-interventions-history>
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">Aucune intervention.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                             <div class="tab-pane fade" id="equip-tab-docs" role="tabpanel">
                                 <div class="mb-3 text-uppercase text-muted fw-semibold">Photo principale</div>
@@ -2257,25 +2249,25 @@
                             <div class="tab-pane fade show active" id="organe-tab-catalogue" role="tabpanel">
                                 <div class="mb-3 text-uppercase text-muted fw-semibold">Classification catalogue</div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Groupe organe</label>
+                                    <label class="form-label">Groupe organe</label>
                                     <div class="input-group">
-                                        <select class="form-select" data-field="groupeId" data-organe-group="organes" required></select>
+                                        <select class="form-select" data-field="groupeId" data-organe-group="organes"></select>
                                         <button class="btn btn-outline-secondary btn-sm" type="button" onclick="openQuickCreateModal('groupe-organe')" title="Créer un nouveau groupe"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
                                 </div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Famille</label>
+                                    <label class="form-label">Famille</label>
                                     <div class="input-group">
-                                        <select class="form-select" data-field="familleId" data-organe-family="organes" required></select>
+                                        <select class="form-select" data-field="familleId" data-organe-family="organes"></select>
                                         <button class="btn btn-outline-secondary btn-sm" type="button" onclick="openQuickCreateModal('famille-organe')" title="Créer une nouvelle famille"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
                                 </div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Sous-famille</label>
+                                    <label class="form-label">Sous-famille</label>
                                     <div class="input-group">
-                                        <select class="form-select" data-field="sousFamilleId" data-organe-subfamily="organes" required></select>
+                                        <select class="form-select" data-field="sousFamilleId" data-organe-subfamily="organes"></select>
                                         <button class="btn btn-outline-secondary btn-sm" type="button" onclick="openQuickCreateModal('sousfamille-organe')" title="Créer une nouvelle sous-famille"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
@@ -2739,7 +2731,7 @@
                                 <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#article-tab-catalogue" type="button" role="tab">Catalogue &amp; Identification</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#article-tab-stock" type="button" role="tab">Stock &amp; Seuils</button>
+                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#article-tab-stock" type="button" role="tab"><i class="fa-solid fa-boxes-stacking me-1"></i>Stock &amp; Seuils</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#article-tab-organes" type="button" role="tab">Utilisation sur Organes</button>
@@ -2752,25 +2744,25 @@
                             <div class="tab-pane fade show active" id="article-tab-catalogue" role="tabpanel">
                                 <div class="mb-3 text-uppercase text-muted fw-semibold">Classification catalogue</div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Groupe article</label>
+                                    <label class="form-label">Groupe article</label>
                                     <div class="input-group">
-                                        <select class="form-select" data-field="groupeId" data-article-group="articles" required></select>
+                                        <select class="form-select" data-field="groupeId" data-article-group="articles"></select>
                                         <button class="btn btn-outline-secondary btn-sm" type="button" onclick="openQuickCreateModal('groupe-article')" title="Créer un nouveau groupe"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
                                 </div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Famille</label>
+                                    <label class="form-label">Famille</label>
                                     <div class="input-group">
-                                        <select class="form-select" data-field="familleId" data-article-family="articles" required></select>
+                                        <select class="form-select" data-field="familleId" data-article-family="articles"></select>
                                         <button class="btn btn-outline-secondary btn-sm" type="button" onclick="openQuickCreateModal('famille-article')" title="Créer une nouvelle famille"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
                                 </div>
                                 <div class="mb-3 gmao-form-group">
-                                    <label class="form-label gmao-required">Sous-famille</label>
+                                    <label class="form-label">Sous-famille</label>
                                     <div class="input-group">
-                                        <select class="form-select" data-field="sousFamilleId" data-article-subfamily="articles" required></select>
+                                        <select class="form-select" data-field="sousFamilleId" data-article-subfamily="articles"></select>
                                         <button class="btn btn-outline-secondary btn-sm" type="button" onclick="openQuickCreateModal('sousfamille-article')" title="Créer une nouvelle sous-famille"><i class="fa-solid fa-plus"></i></button>
                                     </div>
                                     <div class="invalid-feedback">Ce champ est requis.</div>
@@ -2851,6 +2843,7 @@
                                         <select class="form-select" data-field="uniteMesure" required>
                                             <option value="">Sélectionner</option>
                                             <option value="Pièce">Pièce</option>
+                                            <option value="Unité">Unité</option>
                                             <option value="Litre">Litre</option>
                                             <option value="Kg">Kg</option>
                                             <option value="Mètre">Mètre</option>
@@ -3215,40 +3208,6 @@
                             <div class="invalid-feedback">Ce champ est requis.</div>
                         </div>
 
-                        <div class="mb-3 text-uppercase text-muted fw-semibold">Localisation</div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Wilaya</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
-                                <select class="form-select" data-geo="wilaya" data-field="wilaya" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Daïra</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
-                                <select class="form-select" data-geo="daira" data-field="daira" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Commune</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-location-arrow"></i></span>
-                                <select class="form-select" data-geo="commune" data-field="commune" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label">Adresse</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
-                                <input class="form-control" type="text" data-field="adresse">
-                            </div>
-                        </div>
-                        <div class="location-inherited-info d-none" data-location-info="divisions"></div>
-
                         <div class="mb-3 text-uppercase text-muted fw-semibold">Contact &amp; Responsable</div>
                         <div class="mb-3 gmao-form-group">
                             <label class="form-label gmao-required">Responsable</label>
@@ -3329,40 +3288,6 @@
                             <div class="invalid-feedback">Ce champ est requis.</div>
                         </div>
 
-                        <div class="mb-3 text-uppercase text-muted fw-semibold">Localisation</div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Wilaya</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
-                                <select class="form-select" data-geo="wilaya" data-field="wilaya" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Daïra</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
-                                <select class="form-select" data-geo="daira" data-field="daira" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Commune</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-location-arrow"></i></span>
-                                <select class="form-select" data-geo="commune" data-field="commune" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label">Adresse</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
-                                <input class="form-control" type="text" data-field="adresse">
-                            </div>
-                        </div>
-                        <div class="location-inherited-info d-none" data-location-info="departements"></div>
-
                         <div class="mb-3 text-uppercase text-muted fw-semibold">Contact &amp; Responsable</div>
                         <div class="mb-3 gmao-form-group">
                             <label class="form-label gmao-required">Chef de département</label>
@@ -3442,47 +3367,6 @@
                             </div>
                             <div class="invalid-feedback">Ce champ est requis.</div>
                         </div>
-
-                        <div class="mb-3 text-uppercase text-muted fw-semibold">Localisation physique</div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Wilaya</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map-marker-alt"></i></span>
-                                <select class="form-select" data-geo="wilaya" data-field="wilaya" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Daïra</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map"></i></span>
-                                <select class="form-select" data-geo="daira" data-field="daira" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label gmao-required">Commune</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-location-arrow"></i></span>
-                                <select class="form-select" data-geo="commune" data-field="commune" required></select>
-                            </div>
-                            <div class="invalid-feedback">Ce champ est requis.</div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label">Bâtiment / Hall</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-building"></i></span>
-                                <input class="form-control" type="text" data-field="batiment">
-                            </div>
-                        </div>
-                        <div class="mb-3 gmao-form-group">
-                            <label class="form-label">Adresse détaillée</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fa-solid fa-map-pin"></i></span>
-                                <input class="form-control" type="text" data-field="adresse">
-                            </div>
-                        </div>
-                        <div class="location-inherited-info d-none" data-location-info="services"></div>
 
                         <div class="mb-3 text-uppercase text-muted fw-semibold">Contact &amp; Responsable</div>
                         <div class="mb-3 gmao-form-group">
@@ -4334,30 +4218,30 @@
         <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Détail fournisseur</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" id="fournisseur-detail-body"></div></div></div>
     </div>
 
-    <div class="modal fade" id="quickCreateModal" tabindex="-1">
+    <div class="modal fade" id="modal-quick-create" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="quickCreateTitle">Créer</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title"><span id="quick-create-title">Créer</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3" id="quickCreateParentRow" style="display:none">
-                        <span class="text-muted small" id="quickCreateParentLabel"></span>
+                    <div class="mb-3" id="quick-create-parent-row" style="display:none">
+                        <span class="text-muted small" id="quick-create-parent-label"></span>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Code</label>
-                        <input type="text" class="form-control" id="quickCreateCode" readonly>
+                        <label class="form-label fw-semibold" for="quick-create-code">Code</label>
+                        <input type="text" class="form-control" id="quick-create-code" readonly autocomplete="off">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="quickCreateNom" placeholder="Entrez le nom...">
+                        <label class="form-label fw-semibold" for="quick-create-nom">Nom</label>
+                        <input type="text" class="form-control" id="quick-create-nom" placeholder="Entrez le nom..." autocomplete="off">
                         <div class="invalid-feedback">Ce champ est requis.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button class="btn btn-primary" onclick="confirmQuickCreate()"><i class="fa-solid fa-check me-1"></i>Créer</button>
+                    <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="quickCreateConfirmBtn"><i class="fa-solid fa-check me-1"></i>Créer</button>
                 </div>
             </div>
         </div>
