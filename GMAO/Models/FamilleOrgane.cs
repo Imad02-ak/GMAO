@@ -1,11 +1,10 @@
 namespace GMAO.Models;
 
-public class FamilleOrgane : BaseEntity
+public class FamilleOrgane
 {
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Code { get; set; } = string.Empty;
     public string Nom { get; set; } = string.Empty;
-    public string Designation { get; set; } = string.Empty;
-    public string GroupeId { get; set; } = string.Empty;
-    public GroupeOrgane? Groupe { get; set; }
-    public ICollection<SousFamilleOrgane> SousFamilles { get; set; } = new List<SousFamilleOrgane>();
+    public string? Description { get; set; }
+    public string? GroupeId { get; set; }
 }

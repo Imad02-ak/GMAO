@@ -1,19 +1,22 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace GMAO.Models;
 
-public class Entreprise : BaseEntity
+public class Entreprise
 {
-    [Required] public string Nom { get; set; } = string.Empty;
-    [Required] public string Code { get; set; } = string.Empty;
-    public string Wilaya { get; set; } = string.Empty;
-    public string Daira { get; set; } = string.Empty;
-    public string Commune { get; set; } = string.Empty;
-    public string Adresse { get; set; } = string.Empty;
-    public string Telephone { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public DateTime DateCreation { get; set; } = DateTime.UtcNow;
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
-    public ICollection<Unite> Unites { get; set; } = new List<Unite>();
-    public ICollection<Utilisateur> Utilisateurs { get; set; } = new List<Utilisateur>();
+    public string Code { get; set; } = string.Empty;
+
+    public string Nom { get; set; } = string.Empty;
+
+    public string Wilaya { get; set; } = string.Empty;
+
+    public string Daira { get; set; } = string.Empty;
+
+    public string Commune { get; set; } = string.Empty;
+
+    public DateTime? DateCreation { get; set; }
+
+    public string Telephone { get; set; } = string.Empty;
+
+    public ICollection<UserAccount> Utilisateurs { get; set; } = new List<UserAccount>();
 }

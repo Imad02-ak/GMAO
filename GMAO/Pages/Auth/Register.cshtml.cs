@@ -1,13 +1,18 @@
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using GMAO.Data;
+using GMAO.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace GMAO.Pages.Auth;
 
 public class RegisterModel : PageModel
 {
-    public static IDictionary<string, string> CompanyRegistry { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private readonly GmaoDbContext _db;
+    private readonly IPasswordHasher<UserAccount> _passwordHasher;
+    private readonly ILogger<RegisterModel> _logger;
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
@@ -16,17 +21,18 @@ public class RegisterModel : PageModel
 
     public string CompanyCode { get; private set; } = string.Empty;
 
-    /// <summary>
-    /// Loads the registration page.
-    /// </summary>
+    public RegisterModel(GmaoDbContext db, IPasswordHasher<UserAccount> passwordHasher, ILogger<RegisterModel> logger)
+    {
+        _db = db;
+        _passwordHasher = passwordHasher;
+        _logger = logger;
+    }
+
     public void OnGet()
     {
     }
 
-    /// <summary>
-    /// Handles registration form submissions.
-    /// </summary>
-    public IActionResult OnPost()
+    public async Task<IActionResult> OnPostAsync()
     {
         if (Input.CreateNewCompany)
         {
@@ -47,15 +53,65 @@ public class RegisterModel : PageModel
             return Page();
         }
 
+        var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+        if (await _db.UserAccounts.AsNoTracking().AnyAsync(user => user.Email == normalizedEmail))
+        {
+            ModelState.AddModelError("Input.Email", "Cette adresse e-mail est déjà utilisée.");
+            return Page();
+        }
+
+        var companyCodeInput = Input.CompanyCode.Trim();
+        Entreprise? entreprise;
         if (Input.CreateNewCompany)
         {
-            ShowCompanyCreated = true;
             CompanyCode = GenerateCompanyCode();
-            if (!string.IsNullOrWhiteSpace(Input.CompanyName))
+            entreprise = new Entreprise
             {
-                CompanyRegistry[CompanyCode] = Input.CompanyName.Trim();
+                Code = CompanyCode,
+                Nom = Input.CompanyName.Trim(),
+                Wilaya = Input.Wilaya.Trim(),
+                Daira = Input.Daira.Trim(),
+                Commune = Input.Commune.Trim(),
+                DateCreation = Input.CompanyCreationDate,
+                Telephone = Input.PhoneNumber.Trim()
+            };
+
+            _db.Entreprises.Add(entreprise);
+        }
+        else
+        {
+            entreprise = await _db.Entreprises.SingleOrDefaultAsync(e => e.Code == companyCodeInput);
+            if (entreprise is null)
+            {
+                ModelState.AddModelError("Input.CompanyCode", "Aucune entreprise trouvée pour ce code.");
+                return Page();
             }
         }
+
+        var userAccount = new UserAccount
+        {
+            FirstName = Input.FirstName.Trim(),
+            LastName = Input.LastName.Trim(),
+            BirthDate = Input.BirthDate,
+            Email = normalizedEmail,
+            EntrepriseId = entreprise.Id
+        };
+        userAccount.PasswordHash = _passwordHasher.HashPassword(userAccount, Input.Password);
+
+        _db.UserAccounts.Add(userAccount);
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Erreur lors de l'enregistrement de l'inscription.");
+            ModelState.AddModelError(string.Empty, "Impossible d'enregistrer le compte pour le moment.");
+            return Page();
+        }
+
+        ShowCompanyCreated = Input.CreateNewCompany;
 
         return Page();
     }

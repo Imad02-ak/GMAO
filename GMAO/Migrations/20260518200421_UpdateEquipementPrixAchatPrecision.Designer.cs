@@ -4,6 +4,7 @@ using GMAO.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GMAO.Migrations
 {
     [DbContext(typeof(GmaoDbContext))]
-    partial class GmaoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518200421_UpdateEquipementPrixAchatPrecision")]
+    partial class UpdateEquipementPrixAchatPrecision
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,117 +24,6 @@ namespace GMAO.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("GMAO.Models.Article", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DateDernierMouvement")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DateInventaire")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Designation")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DocumentsJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmplacementStock")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EntrepriseId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EquipementId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("FamilleId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FamilleNom")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Fournisseur")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeNom")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Marque")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OrganeLinksJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Photo")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("PrixUnitaire")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("QteReapprovisionnement")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("ReferenceFabricant")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReferenceInterne")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SousFamilleId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SousFamilleNom")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("StockActuel")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("StockCritique")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("StockMinimum")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Type")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UniteMesure")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("ValeurTotale")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EquipementId");
-
-                    b.ToTable("SousEnsembles", (string)null);
-                });
 
             modelBuilder.Entity("GMAO.Models.Departement", b =>
                 {
@@ -275,16 +167,10 @@ namespace GMAO.Migrations
                     b.Property<string>("FamilleId")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("FamilleNom")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Fournisseur")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeNom")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Marque")
@@ -319,9 +205,6 @@ namespace GMAO.Migrations
                     b.Property<string>("SousFamilleId")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("SousFamilleNom")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Statut")
                         .HasColumnType("nvarchar(max)");
 
@@ -335,147 +218,6 @@ namespace GMAO.Migrations
                     b.ToTable("Equipements");
                 });
 
-            modelBuilder.Entity("GMAO.Models.FamilleArticle", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupeId");
-
-                    b.ToTable("FamillesArticles");
-                });
-
-            modelBuilder.Entity("GMAO.Models.FamilleEquipement", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupeId");
-
-                    b.ToTable("FamillesEquipements");
-                });
-
-            modelBuilder.Entity("GMAO.Models.FamilleOrgane", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupeId");
-
-                    b.ToTable("FamillesOrganes");
-                });
-
-            modelBuilder.Entity("GMAO.Models.GroupeArticle", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("GroupesArticles");
-                });
-
-            modelBuilder.Entity("GMAO.Models.GroupeEquipement", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("GroupesEquipements");
-                });
-
-            modelBuilder.Entity("GMAO.Models.GroupeOrgane", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("GroupesOrganes");
-                });
-
             modelBuilder.Entity("GMAO.Models.Organe", b =>
                 {
                     b.Property<string>("Id")
@@ -485,93 +227,15 @@ namespace GMAO.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("DateInstallation")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DateRemplacement")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DescriptionTechnique")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DocumentsJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("DureeVie")
-                        .HasColumnType("int");
-
-                    b.Property<string>("DureeVieUnite")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EquipementCode")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EquipementId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("EquipementNom")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FamilleId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FamilleNom")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Fournisseur")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GroupeNom")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Marque")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Nom")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("PeriodeGarantie")
-                        .HasColumnType("int");
-
-                    b.Property<string>("PeriodeGarantieUnite")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Photo")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PositionSurEquipement")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("PrixUnitaire")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Reference")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("SousEnsembleId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("SousFamilleId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SousFamilleNom")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Statut")
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("EquipementId");
 
                     b.HasIndex("SousEnsembleId");
 
@@ -617,7 +281,7 @@ namespace GMAO.Migrations
                     b.ToTable("Services");
                 });
 
-            modelBuilder.Entity("GMAO.Models.SousFamilleArticle", b =>
+            modelBuilder.Entity("GMAO.Models.SousEnsemble", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
@@ -626,14 +290,9 @@ namespace GMAO.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FamilleId")
+                    b.Property<string>("EquipementId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Nom")
                         .IsRequired()
@@ -641,67 +300,9 @@ namespace GMAO.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("FamilleId");
+                    b.HasIndex("EquipementId");
 
-                    b.ToTable("SousFamillesArticles");
-                });
-
-            modelBuilder.Entity("GMAO.Models.SousFamilleEquipement", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FamilleId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FamilleId");
-
-                    b.ToTable("SousFamillesEquipements");
-                });
-
-            modelBuilder.Entity("GMAO.Models.SousFamilleOrgane", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FamilleId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("GroupeId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Nom")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FamilleId");
-
-                    b.ToTable("SousFamillesOrganes");
+                    b.ToTable("SousEnsembles");
                 });
 
             modelBuilder.Entity("GMAO.Models.Unite", b =>
@@ -796,15 +397,6 @@ namespace GMAO.Migrations
                     b.ToTable("UserAccounts");
                 });
 
-            modelBuilder.Entity("GMAO.Models.Article", b =>
-                {
-                    b.HasOne("GMAO.Models.Equipement", "Equipement")
-                        .WithMany("Articles")
-                        .HasForeignKey("EquipementId");
-
-                    b.Navigation("Equipement");
-                });
-
             modelBuilder.Entity("GMAO.Models.Departement", b =>
                 {
                     b.HasOne("GMAO.Models.Division", "Division")
@@ -838,17 +430,11 @@ namespace GMAO.Migrations
 
             modelBuilder.Entity("GMAO.Models.Organe", b =>
                 {
-                    b.HasOne("GMAO.Models.Equipement", "Equipement")
-                        .WithMany()
-                        .HasForeignKey("EquipementId")
+                    b.HasOne("GMAO.Models.SousEnsemble", "SousEnsemble")
+                        .WithMany("Organes")
+                        .HasForeignKey("SousEnsembleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("GMAO.Models.Article", "SousEnsemble")
-                        .WithMany("Organes")
-                        .HasForeignKey("SousEnsembleId");
-
-                    b.Navigation("Equipement");
 
                     b.Navigation("SousEnsemble");
                 });
@@ -862,6 +448,17 @@ namespace GMAO.Migrations
                         .IsRequired();
 
                     b.Navigation("Departement");
+                });
+
+            modelBuilder.Entity("GMAO.Models.SousEnsemble", b =>
+                {
+                    b.HasOne("GMAO.Models.Equipement", "Equipement")
+                        .WithMany("SousEnsembles")
+                        .HasForeignKey("EquipementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Equipement");
                 });
 
             modelBuilder.Entity("GMAO.Models.Unite", b =>
@@ -886,11 +483,6 @@ namespace GMAO.Migrations
                     b.Navigation("Entreprise");
                 });
 
-            modelBuilder.Entity("GMAO.Models.Article", b =>
-                {
-                    b.Navigation("Organes");
-                });
-
             modelBuilder.Entity("GMAO.Models.Departement", b =>
                 {
                     b.Navigation("Services");
@@ -908,12 +500,17 @@ namespace GMAO.Migrations
 
             modelBuilder.Entity("GMAO.Models.Equipement", b =>
                 {
-                    b.Navigation("Articles");
+                    b.Navigation("SousEnsembles");
                 });
 
             modelBuilder.Entity("GMAO.Models.Service", b =>
                 {
                     b.Navigation("Equipements");
+                });
+
+            modelBuilder.Entity("GMAO.Models.SousEnsemble", b =>
+                {
+                    b.Navigation("Organes");
                 });
 
             modelBuilder.Entity("GMAO.Models.Unite", b =>

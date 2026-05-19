@@ -1,10 +1,9 @@
 namespace GMAO.Models;
 
-public class GroupeArticle : BaseEntity
+public class GroupeArticle
 {
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Code { get; set; } = string.Empty;
     public string Nom { get; set; } = string.Empty;
-    public string Designation { get; set; } = string.Empty;
-    public string EntrepriseId { get; set; } = string.Empty;
-    public ICollection<FamilleArticle> Familles { get; set; } = new List<FamilleArticle>();
+    public string? Description { get; set; }
 }

@@ -1,29 +1,70 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace GMAO.Models;
 
-public class Article : BaseEntity
+public class Article
 {
-    [Required] public string Code { get; set; } = string.Empty;
-    [Required] public string Designation { get; set; } = string.Empty;
-    public string Type { get; set; } = string.Empty;
-    public string UniteMesure { get; set; } = string.Empty;
-    public string ReferenceInterne { get; set; } = string.Empty;
-    public string ReferenceFabricant { get; set; } = string.Empty;
-    public string Marque { get; set; } = string.Empty;
-    public string FournisseurId { get; set; } = string.Empty;
-    public Fournisseur? Fournisseur { get; set; }
-    public double StockActuel { get; set; }
-    public double StockMinimum { get; set; }
-    public double StockCritique { get; set; }
-    public double QteReapprovisionnement { get; set; }
-    public decimal PrixUnitaire { get; set; }
-    public string EmplacementStock { get; set; } = string.Empty;
-    public string Notes { get; set; } = string.Empty;
-    public string SousFamilleId { get; set; } = string.Empty;
-    public SousFamilleArticle? SousFamille { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
 
-    public ICollection<MouvementStock> Mouvements { get; set; } = new List<MouvementStock>();
-    public ICollection<ArticleOrgane> ArticleOrganes { get; set; } = new List<ArticleOrgane>();
-    public ICollection<CommandeLigne> CommandeLignes { get; set; } = new List<CommandeLigne>();
+    public string Code { get; set; } = string.Empty;
+
+    public string Nom { get; set; } = string.Empty;
+
+    public string Designation { get; set; } = string.Empty;
+
+    public string? ReferenceInterne { get; set; }
+
+    public string? ReferenceFabricant { get; set; }
+
+    public string? Marque { get; set; }
+
+    public string? Fournisseur { get; set; }
+
+    public string? Type { get; set; }
+
+    public string? UniteMesure { get; set; }
+
+    public decimal? StockActuel { get; set; }
+
+    public string? EmplacementStock { get; set; }
+
+    public decimal? StockMinimum { get; set; }
+
+    public decimal? StockCritique { get; set; }
+
+    public decimal? QteReapprovisionnement { get; set; }
+
+    public decimal? PrixUnitaire { get; set; }
+
+    public decimal? ValeurTotale { get; set; }
+
+    public DateTime? DateInventaire { get; set; }
+
+    public DateTime? DateDernierMouvement { get; set; }
+
+    public string? Photo { get; set; }
+
+    public string? DocumentsJson { get; set; }
+
+    public string? Notes { get; set; }
+
+    public string? GroupeId { get; set; }
+
+    public string? GroupeNom { get; set; }
+
+    public string? FamilleId { get; set; }
+
+    public string? FamilleNom { get; set; }
+
+    public string? SousFamilleId { get; set; }
+
+    public string? SousFamilleNom { get; set; }
+
+    public string? OrganeLinksJson { get; set; }
+
+    public string? EquipementId { get; set; }
+
+    public Equipement? Equipement { get; set; }
+
+    public ICollection<Organe> Organes { get; set; } = new List<Organe>();
+
+    public string? EntrepriseId { get; set; }
 }

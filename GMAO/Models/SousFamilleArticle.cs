@@ -1,11 +1,11 @@
 namespace GMAO.Models;
 
-public class SousFamilleArticle : BaseEntity
+public class SousFamilleArticle
 {
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Code { get; set; } = string.Empty;
     public string Nom { get; set; } = string.Empty;
-    public string Designation { get; set; } = string.Empty;
-    public string FamilleId { get; set; } = string.Empty;
-    public FamilleArticle? Famille { get; set; }
-    public ICollection<Article> Articles { get; set; } = new List<Article>();
+    public string? Description { get; set; }
+    public string? FamilleId { get; set; }
+    public string? GroupeId { get; set; }
 }

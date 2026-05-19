@@ -1,13 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace GMAO.Models;
 
-public class SousFamilleEquipement : BaseEntity
+public class SousFamilleEquipement
 {
-    [Required] public string Code { get; set; } = string.Empty;
-    [Required] public string Nom { get; set; } = string.Empty;
-    public string Designation { get; set; } = string.Empty;
-    public string FamilleId { get; set; } = string.Empty;
-    public FamilleEquipement? Famille { get; set; }
-    public ICollection<Equipement> Equipements { get; set; } = new List<Equipement>();
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Code { get; set; } = string.Empty;
+    public string Nom { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? FamilleId { get; set; }
+    public string? GroupeId { get; set; }
 }

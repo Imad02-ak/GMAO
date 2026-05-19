@@ -1,22 +1,32 @@
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Security.Claims;
+using GMAO.Data;
+using GMAO.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace GMAO.Pages.Auth;
 
 public class LoginModel : PageModel
 {
+    private readonly ILogger<LoginModel> _logger;
+    private readonly GmaoDbContext _db;
+    private readonly IPasswordHasher<UserAccount> _passwordHasher;
+
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    /// <summary>
-    /// Loads the login page.
-    /// </summary>
+    public LoginModel(ILogger<LoginModel> logger, GmaoDbContext db, IPasswordHasher<UserAccount> passwordHasher)
+    {
+        _logger = logger;
+        _db = db;
+        _passwordHasher = passwordHasher;
+    }
+
     public IActionResult OnGet()
     {
         if (User?.Identity?.IsAuthenticated == true)
@@ -27,9 +37,6 @@ public class LoginModel : PageModel
         return Page();
     }
 
-    /// <summary>
-    /// Handles the login submission.
-    /// </summary>
     public async Task<IActionResult> OnPostAsync()
     {
         if (!ModelState.IsValid)
@@ -37,20 +44,48 @@ public class LoginModel : PageModel
             return Page();
         }
 
-        var displayName = Input.Email.Split('@', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "Utilisateur";
-        var firstName = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? displayName;
-        var companyName = RegisterModel.CompanyRegistry.TryGetValue(Input.CompanyCode, out var registeredCompany)
-            ? registeredCompany
-            : string.Equals(Input.CompanyCode, "4@gml", StringComparison.OrdinalIgnoreCase)
-                ? "Entreprise Nationale Sonatrach"
-                : Input.CompanyCode;
+        var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+        var user = await _db.UserAccounts.AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+        if (user is null)
+        {
+            ModelState.AddModelError("Input.Email", "Adresse email introuvable.");
+            return Page();
+        }
+
+        var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, Input.Password);
+        if (verificationResult == PasswordVerificationResult.Failed)
+        {
+            ModelState.AddModelError("Input.Password", "Mot de passe incorrect.");
+            return Page();
+        }
+
+        var companyCodeInput = Input.CompanyCode.Trim();
+        var entreprise = await _db.Entreprises.AsNoTracking().FirstOrDefaultAsync(e => e.Code == companyCodeInput);
+        if (entreprise is null)
+        {
+            ModelState.AddModelError("Input.CompanyCode", "Code entreprise invalide.");
+            return Page();
+        }
+
+        if (!string.Equals(user.EntrepriseId, entreprise.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError("Input.CompanyCode", "Ce compte n'est pas associé à cette entreprise.");
+            return Page();
+        }
+
+        var displayName = string.Join(' ', new[] { user.FirstName, user.LastName }.Where(part => !string.IsNullOrWhiteSpace(part)));
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            displayName = user.Email;
+        }
 
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, displayName),
-            new Claim(ClaimTypes.GivenName, firstName),
-            new Claim("CompanyName", companyName),
-            new Claim("CompanyCode", Input.CompanyCode)
+            new Claim(ClaimTypes.GivenName, user.FirstName ?? string.Empty),
+            new Claim("CompanyName", entreprise.Nom),
+            new Claim("CompanyCode", entreprise.Code),
+            new Claim("EntrepriseId", entreprise.Id)
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

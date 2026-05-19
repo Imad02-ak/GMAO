@@ -1,40 +1,56 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace GMAO.Models;
 
-public class Equipement : BaseEntity
+public class Equipement
 {
-    [Required] public string Tag { get; set; } = string.Empty;
-    [Required] public string Nom { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Marque { get; set; } = string.Empty;
-    public string Modele { get; set; } = string.Empty;
-    public string NumeroSerie { get; set; } = string.Empty;
-    public string Fournisseur { get; set; } = string.Empty;
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+
+    public string Code { get; set; } = string.Empty;
+
+    public string Nom { get; set; } = string.Empty;
+
+    public string? Marque { get; set; }
+
+    public string? Fournisseur { get; set; }
+
+    public string? NumeroSerie { get; set; }
+
     public DateTime? DateAchat { get; set; }
-    public DateTime? DateMiseEnService { get; set; }
-    public DateTime? DateFinGarantie { get; set; }
+
     public decimal? PrixAchat { get; set; }
-    public decimal? ValeurActuelle { get; set; }
-    public int? DureeVie { get; set; }
-    public string DureeVieUnite { get; set; } = string.Empty;
-    public string Statut { get; set; } = "En service";
-    public int Criticite { get; set; } = 3;
-    public string Localisation { get; set; } = string.Empty;
-    public string Batiment { get; set; } = string.Empty;
-    public string Salle { get; set; } = string.Empty;
-    public string Ligne { get; set; } = string.Empty;
-    public double CompteurHeures { get; set; }
-    public double CompteurCycles { get; set; }
-    public double CompteurDistance { get; set; }
-    public double? SeuilAlerte { get; set; }
+
+    public DateTime? DateMiseEnService { get; set; }
+
+    public int? PeriodeGarantie { get; set; }
+
+    public string? PeriodeGarantieUnite { get; set; }
+
+    public string? Criticite { get; set; }
+
+    public string? Statut { get; set; }
+
+    public string? Notes { get; set; }
+
+    public string? Photo { get; set; }
+
+    public string? DocumentsJson { get; set; }
+
+    public string? GroupeId { get; set; }
+
+    public string? GroupeNom { get; set; }
+
+    public string? FamilleId { get; set; }
+
+    public string? FamilleNom { get; set; }
+
+    public string? SousFamilleId { get; set; }
+
+    public string? SousFamilleNom { get; set; }
+
+    public string? Tag { get; set; }
 
     public string? ServiceId { get; set; }
-    public Service? Service { get; set; }
-    public string SousFamilleId { get; set; } = string.Empty;
-    public SousFamilleEquipement? SousFamille { get; set; }
-    public string EntrepriseId { get; set; } = string.Empty;
 
-    public ICollection<SousEnsemble> SousEnsembles { get; set; } = new List<SousEnsemble>();
-    public ICollection<Intervention> Interventions { get; set; } = new List<Intervention>();
+    public Service? Service { get; set; }
+
+    public ICollection<Article> Articles { get; set; } = new List<Article>();
 }

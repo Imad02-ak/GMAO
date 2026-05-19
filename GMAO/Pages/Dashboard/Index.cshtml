@@ -1719,9 +1719,6 @@
                                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#equip-tab-technique" type="button" role="tab">Informations Techniques</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#equip-tab-compteurs" type="button" role="tab">Compteurs</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
                                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#equip-tab-docs" type="button" role="tab">Documents &amp; Photos</button>
                             </li>
                         </ul>
@@ -1897,64 +1894,6 @@
                                     <label class="btn btn-outline-secondary" for="statut-hs">Hors service</label>
                                 </div>
 
-                            </div>
-                            <div class="tab-pane fade" id="equip-tab-compteurs" role="tabpanel">
-                                <div class="alert alert-info d-flex justify-content-between align-items-center">
-                                    <div>ℹ️ Calcul automatique basé sur le planning : Dimanche–Jeudi | 08h00–17h00 | 9h/jour</div>
-                                    <a href="#" data-action="open-planning-settings" class="small text-decoration-none">Modifier le planning →</a>
-                                </div>
-                                <div class="mb-3 text-uppercase text-muted fw-semibold">Compteurs calculés</div>
-                                <div data-equip-counters-display></div>
-
-                                <div class="mt-4 text-uppercase text-muted fw-semibold">Déclarer un arrêt machine</div>
-                                <div class="mb-3">
-                                    <label class="form-label">Type d'arrêt</label>
-                                    <div class="btn-group" role="group">
-                                        <input class="btn-check" type="radio" name="intervention-type" id="int-type-panne" value="PANNE" checked>
-                                        <label class="btn btn-outline-danger" for="int-type-panne">🔴 Panne</label>
-                                        <input class="btn-check" type="radio" name="intervention-type" id="int-type-maintenance" value="MAINTENANCE">
-                                        <label class="btn btn-outline-warning" for="int-type-maintenance">🔧 Maintenance</label>
-                                        <input class="btn-check" type="radio" name="intervention-type" id="int-type-arret" value="ARRET_PROGRAMME">
-                                        <label class="btn btn-outline-secondary" for="int-type-arret">⏸ Arrêt programmé</label>
-                                    </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Motif / Description</label>
-                                    <textarea class="form-control" rows="3" data-intervention-motif placeholder="Décrivez la raison de l'arrêt..."></textarea>
-                                </div>
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Date et heure d'arrêt</label>
-                                        <input class="form-control" type="datetime-local" data-intervention-date-arret value="">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Date et heure de reprise (optionnel)</label>
-                                        <input class="form-control" type="datetime-local" data-intervention-date-reprise>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-primary mt-3" data-action="save-intervention"><i class="fa-solid fa-save me-1"></i>Enregistrer l'arrêt</button>
-
-                                <div class="mt-4 text-uppercase text-muted fw-semibold">Historique des interventions</div>
-                                <div class="table-responsive">
-                                    <table class="table table-sm align-middle">
-                                        <thead>
-                                            <tr>
-                                                <th>Type</th>
-                                                <th>Motif</th>
-                                                <th>Date arrêt</th>
-                                                <th>Date reprise</th>
-                                                <th>Durée (h)</th>
-                                                <th>Statut</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody data-equip-interventions-history>
-                                            <tr>
-                                                <td colspan="7" class="text-center text-muted">Aucune intervention.</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
                             </div>
                             <div class="tab-pane fade" id="equip-tab-docs" role="tabpanel">
                                 <div class="mb-3 text-uppercase text-muted fw-semibold">Photo principale</div>

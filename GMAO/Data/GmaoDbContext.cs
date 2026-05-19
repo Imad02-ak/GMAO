@@ -5,85 +5,125 @@ namespace GMAO.Data;
 
 public class GmaoDbContext : DbContext
 {
-    public GmaoDbContext(DbContextOptions<GmaoDbContext> options) : base(options) { }
+    public GmaoDbContext(DbContextOptions<GmaoDbContext> options)
+        : base(options)
+    {
+    }
 
     public DbSet<Entreprise> Entreprises => Set<Entreprise>();
+
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+
     public DbSet<Unite> Unites => Set<Unite>();
+
     public DbSet<Division> Divisions => Set<Division>();
+
     public DbSet<Departement> Departements => Set<Departement>();
+
     public DbSet<Service> Services => Set<Service>();
-    public DbSet<GroupeEquipement> GroupesEquipement => Set<GroupeEquipement>();
-    public DbSet<FamilleEquipement> FamillesEquipement => Set<FamilleEquipement>();
-    public DbSet<SousFamilleEquipement> SousFamillesEquipement => Set<SousFamilleEquipement>();
+
     public DbSet<Equipement> Equipements => Set<Equipement>();
-    public DbSet<SousEnsemble> SousEnsembles => Set<SousEnsemble>();
-    public DbSet<GroupeOrgane> GroupesOrgane => Set<GroupeOrgane>();
-    public DbSet<FamilleOrgane> FamillesOrgane => Set<FamilleOrgane>();
-    public DbSet<SousFamilleOrgane> SousFamillesOrgane => Set<SousFamilleOrgane>();
-    public DbSet<Organe> Organes => Set<Organe>();
-    public DbSet<Composant> Composants => Set<Composant>();
-    public DbSet<GroupeArticle> GroupesArticle => Set<GroupeArticle>();
-    public DbSet<FamilleArticle> FamillesArticle => Set<FamilleArticle>();
-    public DbSet<SousFamilleArticle> SousFamillesArticle => Set<SousFamilleArticle>();
+    public DbSet<GroupeEquipement> GroupesEquipements => Set<GroupeEquipement>();
+    public DbSet<FamilleEquipement> FamillesEquipements => Set<FamilleEquipement>();
+    public DbSet<SousFamilleEquipement> SousFamillesEquipements => Set<SousFamilleEquipement>();
+
     public DbSet<Article> Articles => Set<Article>();
-    public DbSet<ArticleOrgane> ArticleOrganes => Set<ArticleOrgane>();
-    public DbSet<Fournisseur> Fournisseurs => Set<Fournisseur>();
-    public DbSet<MouvementStock> MouvementsStock => Set<MouvementStock>();
-    public DbSet<CommandeAchat> CommandesAchat => Set<CommandeAchat>();
-    public DbSet<CommandeLigne> CommandeLignes => Set<CommandeLigne>();
-    public DbSet<Intervention> Interventions => Set<Intervention>();
-    public DbSet<Utilisateur> Utilisateurs => Set<Utilisateur>();
+    public DbSet<GroupeArticle> GroupesArticles => Set<GroupeArticle>();
+    public DbSet<FamilleArticle> FamillesArticles => Set<FamilleArticle>();
+    public DbSet<SousFamilleArticle> SousFamillesArticles => Set<SousFamilleArticle>();
+
+    public DbSet<Organe> Organes => Set<Organe>();
+    public DbSet<GroupeOrgane> GroupesOrganes => Set<GroupeOrgane>();
+    public DbSet<FamilleOrgane> FamillesOrganes => Set<FamilleOrgane>();
+    public DbSet<SousFamilleOrgane> SousFamillesOrganes => Set<SousFamilleOrgane>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<Entreprise>()
+            .HasIndex(e => e.Code)
+            .IsUnique();
 
-        modelBuilder.Entity<ArticleOrgane>().HasKey(ao => new { ao.ArticleId, ao.OrganeId });
+        modelBuilder.Entity<UserAccount>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
 
-        modelBuilder.Entity<Article>().Property(a => a.PrixUnitaire).HasPrecision(18, 2);
-        modelBuilder.Entity<MouvementStock>().Property(m => m.ValeurMouvement).HasPrecision(18, 2);
-        modelBuilder.Entity<CommandeLigne>().Property(c => c.TotalLigne).HasPrecision(18, 2);
+        modelBuilder.Entity<UserAccount>()
+            .HasOne(u => u.Entreprise)
+            .WithMany(e => e.Utilisateurs)
+            .HasForeignKey(u => u.EntrepriseId);
+
+        modelBuilder.Entity<Unite>()
+            .HasIndex(u => u.EntrepriseId);
+
+        modelBuilder.Entity<Division>()
+            .HasIndex(d => d.UniteId);
+
+        modelBuilder.Entity<Departement>()
+            .HasIndex(d => d.DivisionId);
+
+        modelBuilder.Entity<Service>()
+            .HasIndex(s => s.DepartementId);
 
         modelBuilder.Entity<Equipement>()
-            .HasOne(e => e.Service)
-            .WithMany(s => s.Equipements)
-            .HasForeignKey(e => e.ServiceId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasIndex(e => e.ServiceId);
 
-        modelBuilder.Entity<Organe>()
-            .HasOne(o => o.SousEnsemble)
-            .WithMany(se => se.Organes)
-            .HasForeignKey(o => o.SousEnsembleId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Avoid SQL Server multiple cascade path conflicts on purchasing chain.
-        modelBuilder.Entity<CommandeLigne>()
-            .HasOne(cl => cl.Commande)
-            .WithMany(c => c.Lignes)
-            .HasForeignKey(cl => cl.CommandeId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<CommandeLigne>()
-            .HasOne(cl => cl.Article)
-            .WithMany(a => a.CommandeLignes)
-            .HasForeignKey(cl => cl.ArticleId)
-            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Equipement>()
+            .Property(e => e.PrixAchat)
+            .HasPrecision(18, 2);
 
         modelBuilder.Entity<Article>()
-            .HasOne(a => a.Fournisseur)
-            .WithMany(f => f.Articles)
-            .HasForeignKey(a => a.FournisseurId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .ToTable("SousEnsembles");
 
-        modelBuilder.Entity<CommandeAchat>()
-            .HasOne(c => c.Fournisseur)
-            .WithMany(f => f.Commandes)
-            .HasForeignKey(c => c.FournisseurId)
-            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Article>()
+            .HasIndex(article => article.EquipementId);
 
-        modelBuilder.Entity<Equipement>().HasIndex(e => e.Tag).IsUnique();
-        modelBuilder.Entity<Entreprise>().HasIndex(e => e.Code).IsUnique();
-        modelBuilder.Entity<Utilisateur>().HasIndex(u => u.Email).IsUnique();
-        modelBuilder.Entity<Article>().HasIndex(a => a.ReferenceInterne);
+        modelBuilder.Entity<Article>()
+            .Property(article => article.PrixUnitaire)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Article>()
+            .Property(article => article.StockActuel)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Article>()
+            .Property(article => article.StockMinimum)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Article>()
+            .Property(article => article.StockCritique)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Article>()
+            .Property(article => article.QteReapprovisionnement)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Article>()
+            .Property(article => article.ValeurTotale)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Organe>()
+            .HasIndex(o => o.SousEnsembleId);
+
+        modelBuilder.Entity<FamilleEquipement>()
+            .HasIndex(f => f.GroupeId);
+
+        modelBuilder.Entity<SousFamilleEquipement>()
+            .HasIndex(s => s.FamilleId);
+
+        modelBuilder.Entity<FamilleOrgane>()
+            .HasIndex(f => f.GroupeId);
+
+        modelBuilder.Entity<SousFamilleOrgane>()
+            .HasIndex(s => s.FamilleId);
+
+        modelBuilder.Entity<FamilleArticle>()
+            .HasIndex(f => f.GroupeId);
+
+        modelBuilder.Entity<SousFamilleArticle>()
+            .HasIndex(s => s.FamilleId);
+
+        modelBuilder.Entity<Organe>()
+            .Property(o => o.PrixUnitaire)
+            .HasPrecision(18, 2);
     }
 }
