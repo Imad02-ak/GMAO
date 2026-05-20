@@ -221,7 +221,6 @@ public class IndexModel : PageModel
                     children = familyChildren.Concat(directEquipmentChildren).ToList()
                 };
             })
-            .Where(node => node.children.Count > 0)
             .Cast<object>()
             .Concat(
                 equipements
@@ -1476,6 +1475,260 @@ public class IndexModel : PageModel
         }
 
         _db.Services.Remove(service);
+        await _db.SaveChangesAsync();
+        return SuccessResult();
+    }
+
+    public async Task<JsonResult> OnPostDeleteGroupeEquipementAsync([FromBody] DeleteRequest request)
+    {
+        var requestKey = (request.Id ?? string.Empty).Trim().Replace("\u00A0", string.Empty);
+        if (string.IsNullOrWhiteSpace(requestKey))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.GroupesEquipements.FirstOrDefaultAsync(g => g.Id == requestKey || g.Code == requestKey);
+        if (entity is null)
+        {
+            return ErrorResult("Groupe introuvable.");
+        }
+
+        try
+        {
+            var famillesIds = await _db.FamillesEquipements
+                .Where(f => f.GroupeId == entity.Id)
+                .Select(f => f.Id)
+                .ToListAsync();
+
+            var sousFamillesIds = await _db.SousFamillesEquipements
+                .Where(sf => sf.GroupeId == entity.Id || famillesIds.Contains(sf.FamilleId!))
+                .Select(sf => sf.Id)
+                .ToListAsync();
+
+            var equipementsToDelete = await _db.Equipements
+                .Where(eq => eq.GroupeId == entity.Id
+                    || famillesIds.Contains(eq.FamilleId!)
+                    || sousFamillesIds.Contains(eq.SousFamilleId!))
+                .ToListAsync();
+            if (equipementsToDelete.Count > 0)
+            {
+                _db.Equipements.RemoveRange(equipementsToDelete);
+            }
+
+            var sousFamillesToDelete = await _db.SousFamillesEquipements
+                .Where(sf => sf.GroupeId == entity.Id || famillesIds.Contains(sf.FamilleId!))
+                .ToListAsync();
+            if (sousFamillesToDelete.Count > 0)
+            {
+                _db.SousFamillesEquipements.RemoveRange(sousFamillesToDelete);
+            }
+
+            var famillesToDelete = await _db.FamillesEquipements
+                .Where(f => f.GroupeId == entity.Id)
+                .ToListAsync();
+            if (famillesToDelete.Count > 0)
+            {
+                _db.FamillesEquipements.RemoveRange(famillesToDelete);
+            }
+
+            _db.GroupesEquipements.Remove(entity);
+            await _db.SaveChangesAsync();
+            return SuccessResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur suppression groupe equipement {GroupId}", requestKey);
+            return ErrorResult("Suppression impossible: des éléments liés bloquent l'opération.");
+        }
+    }
+
+    public async Task<JsonResult> OnPostDeleteFamilleEquipementAsync([FromBody] DeleteRequest request)
+    {
+        var requestKey = (request.Id ?? string.Empty).Trim().Replace("\u00A0", string.Empty);
+        if (string.IsNullOrWhiteSpace(requestKey))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.FamillesEquipements.FirstOrDefaultAsync(f => f.Id == requestKey || f.Code == requestKey);
+        if (entity is null)
+        {
+            return ErrorResult("Famille introuvable.");
+        }
+
+        try
+        {
+            var sousFamillesIds = await _db.SousFamillesEquipements
+                .Where(sf => sf.FamilleId == entity.Id)
+                .Select(sf => sf.Id)
+                .ToListAsync();
+
+            var equipementsToDelete = await _db.Equipements
+                .Where(eq => eq.FamilleId == entity.Id || sousFamillesIds.Contains(eq.SousFamilleId!))
+                .ToListAsync();
+            if (equipementsToDelete.Count > 0)
+            {
+                _db.Equipements.RemoveRange(equipementsToDelete);
+            }
+
+            var sousFamillesToDelete = await _db.SousFamillesEquipements
+                .Where(sf => sf.FamilleId == entity.Id)
+                .ToListAsync();
+            if (sousFamillesToDelete.Count > 0)
+            {
+                _db.SousFamillesEquipements.RemoveRange(sousFamillesToDelete);
+            }
+
+            _db.FamillesEquipements.Remove(entity);
+            await _db.SaveChangesAsync();
+            return SuccessResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur suppression famille equipement {FamilleId}", requestKey);
+            return ErrorResult("Suppression impossible: des éléments liés bloquent l'opération.");
+        }
+    }
+
+    public async Task<JsonResult> OnPostDeleteSousFamilleEquipementAsync([FromBody] DeleteRequest request)
+    {
+        var requestKey = (request.Id ?? string.Empty).Trim().Replace("\u00A0", string.Empty);
+        if (string.IsNullOrWhiteSpace(requestKey))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.SousFamillesEquipements.FirstOrDefaultAsync(sf => sf.Id == requestKey || sf.Code == requestKey);
+        if (entity is null)
+        {
+            return ErrorResult("Sous-famille introuvable.");
+        }
+
+        try
+        {
+            var equipementsToDelete = await _db.Equipements
+                .Where(eq => eq.SousFamilleId == entity.Id)
+                .ToListAsync();
+            if (equipementsToDelete.Count > 0)
+            {
+                _db.Equipements.RemoveRange(equipementsToDelete);
+            }
+
+            _db.SousFamillesEquipements.Remove(entity);
+            await _db.SaveChangesAsync();
+            return SuccessResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur suppression sous-famille equipement {SousFamilleId}", requestKey);
+            return ErrorResult("Suppression impossible: des éléments liés bloquent l'opération.");
+        }
+    }
+
+    public async Task<JsonResult> OnPostDeleteGroupeOrganeAsync([FromBody] DeleteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.GroupesOrganes.FirstOrDefaultAsync(g => g.Id == request.Id);
+        if (entity is null)
+        {
+            return ErrorResult("Groupe introuvable.");
+        }
+
+        _db.GroupesOrganes.Remove(entity);
+        await _db.SaveChangesAsync();
+        return SuccessResult();
+    }
+
+    public async Task<JsonResult> OnPostDeleteFamilleOrganeAsync([FromBody] DeleteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.FamillesOrganes.FirstOrDefaultAsync(f => f.Id == request.Id);
+        if (entity is null)
+        {
+            return ErrorResult("Famille introuvable.");
+        }
+
+        _db.FamillesOrganes.Remove(entity);
+        await _db.SaveChangesAsync();
+        return SuccessResult();
+    }
+
+    public async Task<JsonResult> OnPostDeleteSousFamilleOrganeAsync([FromBody] DeleteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.SousFamillesOrganes.FirstOrDefaultAsync(sf => sf.Id == request.Id);
+        if (entity is null)
+        {
+            return ErrorResult("Sous-famille introuvable.");
+        }
+
+        _db.SousFamillesOrganes.Remove(entity);
+        await _db.SaveChangesAsync();
+        return SuccessResult();
+    }
+
+    public async Task<JsonResult> OnPostDeleteGroupeArticleAsync([FromBody] DeleteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.GroupesArticles.FirstOrDefaultAsync(g => g.Id == request.Id);
+        if (entity is null)
+        {
+            return ErrorResult("Groupe introuvable.");
+        }
+
+        _db.GroupesArticles.Remove(entity);
+        await _db.SaveChangesAsync();
+        return SuccessResult();
+    }
+
+    public async Task<JsonResult> OnPostDeleteFamilleArticleAsync([FromBody] DeleteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.FamillesArticles.FirstOrDefaultAsync(f => f.Id == request.Id);
+        if (entity is null)
+        {
+            return ErrorResult("Famille introuvable.");
+        }
+
+        _db.FamillesArticles.Remove(entity);
+        await _db.SaveChangesAsync();
+        return SuccessResult();
+    }
+
+    public async Task<JsonResult> OnPostDeleteSousFamilleArticleAsync([FromBody] DeleteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Id))
+        {
+            return ErrorResult("Suppression invalide.");
+        }
+
+        var entity = await _db.SousFamillesArticles.FirstOrDefaultAsync(sf => sf.Id == request.Id);
+        if (entity is null)
+        {
+            return ErrorResult("Sous-famille introuvable.");
+        }
+
+        _db.SousFamillesArticles.Remove(entity);
         await _db.SaveChangesAsync();
         return SuccessResult();
     }

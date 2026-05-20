@@ -196,17 +196,14 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
                         assigned.Add(eq.Id);
                     }
 
-                    if (equipementChildren.Count > 0)
+                    sousNodes.Add(new
                     {
-                        sousNodes.Add(new
-                        {
-                            id = $"sousfamilleequip-{serviceId}-{groupe.Id}-{famille.Id}-{sous.Id}",
-                            type = "sousFamilleEquip",
-                            nom = sous.Nom,
-                            code = sous.Id,
-                            children = equipementChildren.Select(BuildEquipementNode).Cast<object>().ToList()
-                        });
-                    }
+                        id = $"sousfamilleequip-{serviceId}-{groupe.Id}-{famille.Id}-{sous.Id}",
+                        type = "sousFamilleEquip",
+                        nom = sous.Nom,
+                        code = sous.Id,
+                        children = equipementChildren.Select(BuildEquipementNode).Cast<object>().ToList()
+                    });
                 }
 
                 var equipementsFamilleOnly = serviceEquipements
@@ -233,17 +230,14 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
                     });
                 }
 
-                if (sousNodes.Count > 0)
+                familleNodes.Add(new
                 {
-                    familleNodes.Add(new
-                    {
-                        id = $"familleequip-{serviceId}-{groupe.Id}-{famille.Id}",
-                        type = "familleEquip",
-                        nom = famille.Nom,
-                        code = famille.Id,
-                        children = sousNodes
-                    });
-                }
+                    id = $"familleequip-{serviceId}-{groupe.Id}-{famille.Id}",
+                    type = "familleEquip",
+                    nom = famille.Nom,
+                    code = famille.Id,
+                    children = sousNodes
+                });
             }
 
             var equipementsGroupeOnly = serviceEquipements
@@ -327,10 +321,9 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
 
     List<object> BuildOrganeHierarchy(string equipementId)
     {
-        if (!organesByEquipement.TryGetValue(equipementId, out var equipementOrganes) || equipementOrganes == null)
-        {
-            return new List<object>();
-        }
+        var equipementOrganes = organesByEquipement.TryGetValue(equipementId, out var linkedOrganes) && linkedOrganes != null
+            ? linkedOrganes
+            : new List<Organe>();
 
         var assigned = new HashSet<string>();
         var nodes = new List<object>();
@@ -545,9 +538,11 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
                                 nom = service.Nom,
                                 code = service.Code,
                                 icon = "tools",
-                                children = equipementsByService.TryGetValue(service.Id, out var serviceEquipements)
-                                    ? BuildEquipementHierarchy(service.Id, serviceEquipements)
-                                    : new List<object>()
+                                children = BuildEquipementHierarchy(
+                                    service.Id,
+                                    equipementsByService.TryGetValue(service.Id, out var serviceEquipements)
+                                        ? serviceEquipements
+                                        : new List<Equipement>())
                             }).ToList()
                             : new List<object>()
                     }).ToList()

@@ -36,6 +36,7 @@ const orgDeleteModals = {};
 let chartsInitialized = false;
 let countersStarted = false;
 let selectedTreeNode = null;
+let treeContextMenuEl = null;
 let activeFormContext = null;
 let pendingDelete = null;
 let orgFormContext = null;
@@ -2077,7 +2078,17 @@ const equipDataMap = {
   equipements: () => equipements,
 };
 
+const normalizeEquipLevel = (level) => {
+  const aliasMap = {
+    groupeEquip: "groupes",
+    familleEquip: "familles",
+    sousFamilleEquip: "sousfamilles",
+  };
+  return aliasMap[level] ?? level;
+};
+
 const setEquipData = (level, data) => {
+  const normalizedLevel = normalizeEquipLevel(level);
   switch (level) {
     case "groupes":
       groupesEquipements = data;
@@ -2092,6 +2103,22 @@ const setEquipData = (level, data) => {
       equipements = data;
       break;
     default:
+      switch (normalizedLevel) {
+        case "groupes":
+          groupesEquipements = data;
+          break;
+        case "familles":
+          famillesEquipements = data;
+          break;
+        case "sousfamilles":
+          sousFamillesEquipements = data;
+          break;
+        case "equipements":
+          equipements = data;
+          break;
+        default:
+          break;
+      }
       break;
   }
 };
@@ -3142,8 +3169,8 @@ const initEquipModals = () => {
   });
 };
 
-const getEquipConfig = (level) => equipConfigs[level];
-const getEquipItems = (level) => equipDataMap[level]();
+const getEquipConfig = (level) => equipConfigs[normalizeEquipLevel(level)];
+const getEquipItems = (level) => equipDataMap[normalizeEquipLevel(level)]();
 
 const generateEquipCode = (prefix, items) => {
   const maxIndex = items.reduce((max, item) => {
@@ -4020,7 +4047,7 @@ const renderEquipClassificationDetail = (level, item) => {
         </div>
         <div class="row g-3">
           <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${title}</div></div>
-          <div class="col-md-4"><div class="text-muted small">Familles</div><div class="fw-semibold">${familiesEquipements.filter((entry) => entry.groupeId === item.id).length}</div></div>
+          <div class="col-md-4"><div class="text-muted small">Familles</div><div class="fw-semibold">${famillesEquipements.filter((entry) => entry.groupeId === item.id).length}</div></div>
           <div class="col-md-4"><div class="text-muted small">Sous-familles</div><div class="fw-semibold">${sousFamillesEquipements.filter((entry) => entry.groupeId === item.id).length}</div></div>
           <div class="col-md-4"><div class="text-muted small">Équipements</div><div class="fw-semibold">${equipmentCount}</div></div>
         </div>
@@ -4088,7 +4115,13 @@ const openEquipDetail = (levelOrItemId, maybeItemId) => {
     return;
   }
 
-  const item = getEquipItems(level).find((eq) => eq.id === itemId);
+  const item = getEquipItems(level).find(
+    (eq) =>
+      eq.id === itemId ||
+      (eq.code && eq.code === itemId) ||
+      ((selectedTreeNode?.dataset?.name ?? "") &&
+        eq.nom === selectedTreeNode.dataset.name),
+  );
   if (!item) {
     return;
   }
@@ -4184,19 +4217,34 @@ const openEquipDetail = (levelOrItemId, maybeItemId) => {
 
 const openEquipDelete = (level, itemId) => {
   const config = getEquipConfig(level);
+  if (!config) {
+    return;
+  }
   const body = document.getElementById(config.deleteBodyId);
   if (!body) {
     return;
   }
 
-  const item = getEquipItems(level).find((entry) => entry.id === itemId);
-  if (!item) {
-    return;
-  }
+  const normalizedLevel = normalizeEquipLevel(level);
+  const items = getEquipItems(normalizedLevel);
+  const selectedName = selectedTreeNode?.dataset?.name ?? "";
+  const item = items.find(
+    (entry) =>
+      entry.id === itemId ||
+      (entry.code && entry.code === itemId) ||
+      (selectedName && entry.nom === selectedName),
+  );
+  const resolvedItemId = item?.id ?? itemId;
+  pendingEquipDelete = { level: normalizedLevel, itemId: resolvedItemId };
 
-  pendingEquipDelete = { level, itemId };
-  body.innerHTML = `Êtes-vous sûr de vouloir supprimer <strong>${item.nom}</strong> ?<br/>Tous les sous-niveaux associés seront supprimés.`;
-  equipDeleteModals[level]?.show();
+  const fallbackName =
+    selectedTreeNode?.dataset?.id === itemId
+      ? selectedTreeNode.dataset.name ?? ""
+      : "";
+  const displayName = item?.nom || fallbackName || "cet élément";
+
+  body.innerHTML = `Êtes-vous sûr de vouloir supprimer <strong>${displayName}</strong> ?<br/>Tous les sous-niveaux associés seront supprimés.`;
+  equipDeleteModals[normalizedLevel]?.show();
 };
 
 const deleteEquipement = async (equipementId) => {
@@ -4235,17 +4283,47 @@ const cascadeEquipDelete = (level, itemId) => {
   }
 };
 
+const deleteClassification = async (handler, itemId) => {
+  const response = await fetch(`?handler=${handler}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      RequestVerificationToken: getAntiforgeryToken(),
+    },
+    body: JSON.stringify({ id: itemId }),
+  });
+  const result = await response.json();
+  if (!response.ok || !result?.success) {
+    throw new Error(result?.error || "Erreur lors de la suppression.");
+  }
+};
+
+const resolveEquipClassificationId = (level, candidateId, candidateName = "") => {
+  const items = getEquipItems(level);
+  const matched = items.find(
+    (entry) =>
+      entry.id === candidateId ||
+      (entry.code && entry.code === candidateId) ||
+      (candidateName && entry.nom === candidateName),
+  );
+  return matched?.id ?? candidateId;
+};
+
 const confirmEquipDelete = async (level) => {
-  if (!pendingEquipDelete || pendingEquipDelete.level !== level) {
+  const normalizedLevel = normalizeEquipLevel(level);
+  if (
+    !pendingEquipDelete ||
+    normalizeEquipLevel(pendingEquipDelete.level) !== normalizedLevel
+  ) {
     return;
   }
 
-  if (level === "equipements") {
+  if (normalizedLevel === "equipements") {
     try {
       await deleteEquipement(pendingEquipDelete.itemId);
       pendingEquipDelete = null;
       await loadAllData();
-      equipDeleteModals[level]?.hide();
+      equipDeleteModals[normalizedLevel]?.hide();
       showToast("Équipement supprimé.", "success");
     } catch (error) {
       showToast(`Erreur: ${error.message}`, "danger");
@@ -4253,10 +4331,31 @@ const confirmEquipDelete = async (level) => {
     return;
   }
 
-  cascadeEquipDelete(level, pendingEquipDelete.itemId);
+  const handlerMap = {
+    groupes: "DeleteGroupeEquipement",
+    familles: "DeleteFamilleEquipement",
+    sousfamilles: "DeleteSousFamilleEquipement",
+  };
+  const handler = handlerMap[normalizedLevel];
+  const resolvedItemId = resolveEquipClassificationId(
+    normalizedLevel,
+    pendingEquipDelete.itemId,
+    selectedTreeNode?.dataset?.name ?? "",
+  );
+  pendingEquipDelete.itemId = resolvedItemId;
+  if (handler) {
+    try {
+      await deleteClassification(handler, resolvedItemId);
+    } catch (error) {
+      showToast(`Erreur: ${error.message}`, "danger");
+      return;
+    }
+  }
+
+  await loadAllData();
   pendingEquipDelete = null;
-  renderEquipTables();
-  equipDeleteModals[level]?.hide();
+  equipDeleteModals[normalizedLevel]?.hide();
+  showToast("Suppression effectuée.", "success");
 };
 
 const initOrganModals = () => {
@@ -4753,10 +4852,82 @@ const openOrganDetail = (level, itemId) => {
   modalElement.dataset.itemId = itemId;
 
   if (level !== "organes") {
+    const equipmentCount =
+      level === "groupes"
+        ? organes.filter((org) => org.groupeId === item.id).length
+        : level === "familles"
+          ? organes.filter((org) => org.familleId === item.id).length
+          : organes.filter((org) => org.sousFamilleId === item.id).length;
+
+    if (level === "groupes") {
+      const families =
+        famillesOrganes
+          .filter((entry) => entry.groupeId === item.id)
+          .map((entry) => `<li>${entry.nom}</li>`)
+          .join("") || "<li>Aucune famille associée</li>";
+
+      body.innerHTML = `
+            <div class="mb-3">
+              <span class="fw-bold fs-5">${item.nom}</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${organConfigs[level]?.label || "Groupe organe"}</div></div>
+              <div class="col-md-4"><div class="text-muted small">Familles</div><div class="fw-semibold">${famillesOrganes.filter((entry) => entry.groupeId === item.id).length}</div></div>
+              <div class="col-md-4"><div class="text-muted small">Sous-familles</div><div class="fw-semibold">${sousFamillesOrganes.filter((entry) => entry.groupeId === item.id).length}</div></div>
+              <div class="col-md-4"><div class="text-muted small">Organes</div><div class="fw-semibold">${equipmentCount}</div></div>
+            </div>
+            <div class="mt-4">
+              <div class="fw-semibold mb-2">Familles associées</div>
+              <ul class="mb-0">${families}</ul>
+            </div>`;
+      organDetailModals[level]?.show();
+      return;
+    }
+
+    if (level === "familles") {
+      const subFamilies =
+        sousFamillesOrganes
+          .filter((entry) => entry.familleId === item.id)
+          .map((entry) => `<li>${entry.nom}</li>`)
+          .join("") || "<li>Aucune sous-famille associée</li>";
+
+      body.innerHTML = `
+            <div class="mb-3">
+              <span class="fw-bold fs-5">${item.nom}</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${organConfigs[level]?.label || "Famille organe"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Groupe parent</div><div class="fw-semibold">${item.groupeNom || "-"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Organes</div><div class="fw-semibold">${equipmentCount}</div></div>
+            </div>
+            <div class="mt-4">
+              <div class="fw-semibold mb-2">Sous-familles associées</div>
+              <ul class="mb-0">${subFamilies}</ul>
+            </div>`;
+      organDetailModals[level]?.show();
+      return;
+    }
+
+    const organsList =
+      organes
+        .filter((org) => org.sousFamilleId === item.id)
+        .map((org) => `<li>${org.nom}</li>`)
+        .join("") || "<li>Aucun organe associé</li>";
+
     body.innerHTML = `
-            <div class="mb-2"><span class="badge bg-primary">${item.code}</span></div>
-            <div class="fw-bold">${item.nom}</div>
-            <div class="text-muted">${item.designation || "-"}</div>`;
+            <div class="mb-3">
+              <span class="fw-bold fs-5">${item.nom}</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${organConfigs[level]?.label || "Sous-famille organe"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Groupe parent</div><div class="fw-semibold">${item.groupeNom || "-"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Famille parente</div><div class="fw-semibold">${item.familleNom || "-"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Organes</div><div class="fw-semibold">${equipmentCount}</div></div>
+            </div>
+            <div class="mt-4">
+              <div class="fw-semibold mb-2">Organes associés</div>
+              <ul class="mb-0">${organsList}</ul>
+            </div>`;
     organDetailModals[level]?.show();
     return;
   }
@@ -4876,10 +5047,25 @@ const confirmOrganDelete = async (level) => {
     return;
   }
 
-  cascadeOrganDelete(level, pendingOrganDelete.itemId);
+  const handlerMap = {
+    groupes: "DeleteGroupeOrgane",
+    familles: "DeleteFamilleOrgane",
+    sousfamilles: "DeleteSousFamilleOrgane",
+  };
+  const handler = handlerMap[level];
+  if (handler) {
+    try {
+      await deleteClassification(handler, pendingOrganDelete.itemId);
+    } catch (error) {
+      showToast(`Erreur: ${error.message}`, "danger");
+      return;
+    }
+  }
+
+  await loadAllData();
   pendingOrganDelete = null;
-  renderOrganTables();
   organDeleteModals[level]?.hide();
+  showToast("Suppression effectuée.", "success");
 };
 
 const initArticleModals = () => {
@@ -5524,10 +5710,79 @@ const openArticleDetail = (level, itemId) => {
   modalElement.dataset.itemId = itemId;
 
   if (level !== "articles") {
+    const articleCount =
+      level === "groupes"
+        ? articles.filter((a) => a.groupeId === item.id).length
+        : level === "familles"
+          ? articles.filter((a) => a.familleId === item.id).length
+          : articles.filter((a) => a.sousFamilleId === item.id).length;
+
+    if (level === "groupes") {
+      const families =
+        famillesArticles
+          .filter((entry) => entry.groupeId === item.id)
+          .map((entry) => `<li>${entry.nom}</li>`)
+          .join("") || "<li>Aucune famille associée</li>";
+      body.innerHTML = `
+            <div class="mb-3">
+              <span class="fw-bold fs-5">${item.nom}</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${articleConfigs[level]?.label || "Groupe article"}</div></div>
+              <div class="col-md-4"><div class="text-muted small">Familles</div><div class="fw-semibold">${famillesArticles.filter((entry) => entry.groupeId === item.id).length}</div></div>
+              <div class="col-md-4"><div class="text-muted small">Sous-familles</div><div class="fw-semibold">${sousFamillesArticles.filter((entry) => entry.groupeId === item.id).length}</div></div>
+              <div class="col-md-4"><div class="text-muted small">Articles</div><div class="fw-semibold">${articleCount}</div></div>
+            </div>
+            <div class="mt-4">
+              <div class="fw-semibold mb-2">Familles associées</div>
+              <ul class="mb-0">${families}</ul>
+            </div>`;
+      articleDetailModals[level]?.show();
+      return;
+    }
+
+    if (level === "familles") {
+      const subFamilies =
+        sousFamillesArticles
+          .filter((entry) => entry.familleId === item.id)
+          .map((entry) => `<li>${entry.nom}</li>`)
+          .join("") || "<li>Aucune sous-famille associée</li>";
+      body.innerHTML = `
+            <div class="mb-3">
+              <span class="fw-bold fs-5">${item.nom}</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${articleConfigs[level]?.label || "Famille article"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Groupe parent</div><div class="fw-semibold">${item.groupeNom || "-"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Articles</div><div class="fw-semibold">${articleCount}</div></div>
+            </div>
+            <div class="mt-4">
+              <div class="fw-semibold mb-2">Sous-familles associées</div>
+              <ul class="mb-0">${subFamilies}</ul>
+            </div>`;
+      articleDetailModals[level]?.show();
+      return;
+    }
+
+    const articleList =
+      articles
+        .filter((a) => a.sousFamilleId === item.id)
+        .map((a) => `<li>${a.designation || a.nom || a.code}</li>`)
+        .join("") || "<li>Aucun article associé</li>";
     body.innerHTML = `
-            <div class="mb-2"><span class="badge bg-primary">${item.code}</span></div>
-            <div class="fw-bold">${item.nom}</div>
-            <div class="text-muted">${item.designation || "-"}</div>`;
+            <div class="mb-3">
+              <span class="fw-bold fs-5">${item.nom}</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${articleConfigs[level]?.label || "Sous-famille article"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Groupe parent</div><div class="fw-semibold">${item.groupeNom || "-"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Famille parente</div><div class="fw-semibold">${item.familleNom || "-"}</div></div>
+              <div class="col-md-6"><div class="text-muted small">Articles</div><div class="fw-semibold">${articleCount}</div></div>
+            </div>
+            <div class="mt-4">
+              <div class="fw-semibold mb-2">Articles associés</div>
+              <ul class="mb-0">${articleList}</ul>
+            </div>`;
     articleDetailModals[level]?.show();
     return;
   }
@@ -5637,16 +5892,30 @@ const cascadeArticleDelete = (level, itemId) => {
   }
 };
 
-const confirmArticleDelete = (level) => {
+const confirmArticleDelete = async (level) => {
   if (!pendingArticleDelete || pendingArticleDelete.level !== level) {
     return;
   }
 
-  cascadeArticleDelete(level, pendingArticleDelete.itemId);
+  const handlerMap = {
+    groupes: "DeleteGroupeArticle",
+    familles: "DeleteFamilleArticle",
+    sousfamilles: "DeleteSousFamilleArticle",
+  };
+  const handler = handlerMap[level];
+  if (handler) {
+    try {
+      await deleteClassification(handler, pendingArticleDelete.itemId);
+    } catch (error) {
+      showToast(`Erreur: ${error.message}`, "danger");
+      return;
+    }
+  }
+
+  await loadAllData();
   pendingArticleDelete = null;
-  renderArticleTables();
-  checkStockAlerts();
   articleDeleteModals[level]?.hide();
+  showToast("Suppression effectuée.", "success");
 };
 
 const checkStockAlerts = () => {
@@ -7011,6 +7280,21 @@ const buildTreeDetails = (node, context) => {
         "Famille parente": node.familleNom || "",
         "Nb équipements": countNodesByType(node.children, "equipement"),
       };
+    case "groupeOrgane":
+      return {
+        "Nb familles": countNodesByType(node.children, "familleOrgane"),
+        "Nb sous-familles": countNodesByType(node.children, "sousFamilleOrgane"),
+        "Nb organes": countNodesByType(node.children, "organe"),
+      };
+    case "familleOrgane":
+      return {
+        "Nb sous-familles": countNodesByType(node.children, "sousFamilleOrgane"),
+        "Nb organes": countNodesByType(node.children, "organe"),
+      };
+    case "sousFamilleOrgane":
+      return {
+        "Nb organes": countNodesByType(node.children, "organe"),
+      };
     case "equipement":
       return {
         Code: node.code ?? node.tag,
@@ -7107,7 +7391,7 @@ const renderTreeNodes = (nodes, context) => {
       const expandedClass = hasChildren ? "expanded" : "";
 
       return `
-        <li class="tree-node ${expandedClass}" data-id="${node.id ?? ""}" data-level="${meta.level}" data-name="${label}" data-type="${node.type ?? ""}" data-details='${JSON.stringify(details)}'>
+        <li class="tree-node ${expandedClass}" data-id="${node.id ?? ""}" data-code="${node.code ?? ""}" data-level="${meta.level}" data-name="${label}" data-type="${node.type ?? ""}" data-details='${JSON.stringify(details)}'>
                     <div class="tree-item">
                         <button class="tree-toggle" aria-label="Basculer"><i class="fa-solid ${toggleIcon}"></i></button>
                         <span class="tree-icon ${meta.iconClass}"><i class="fa-solid ${meta.icon}"></i></span>
@@ -7132,7 +7416,326 @@ const renderTree = () => {
   }
 
   treeRoot.innerHTML = renderTreeNodes(treeData, {});
+  ensureTreeContextMenu();
   bindTreeEvents();
+};
+
+const ensureTreeContextMenu = () => {
+  if (treeContextMenuEl) {
+    return;
+  }
+  const menu = document.createElement("div");
+  menu.id = "tree-context-menu";
+  menu.style.position = "fixed";
+  menu.style.zIndex = "3000";
+  menu.style.minWidth = "240px";
+  menu.style.background = "#fff";
+  menu.style.border = "1px solid #d9dce3";
+  menu.style.borderRadius = "8px";
+  menu.style.boxShadow = "0 8px 24px rgba(0,0,0,.14)";
+  menu.style.padding = "8px";
+  menu.style.display = "none";
+  document.body.appendChild(menu);
+  treeContextMenuEl = menu;
+};
+
+const hideTreeContextMenu = () => {
+  if (!treeContextMenuEl) {
+    return;
+  }
+  treeContextMenuEl.style.display = "none";
+  treeContextMenuEl.innerHTML = "";
+};
+
+const getTreeNodeRawId = (node) => {
+  if (!node) {
+    return "";
+  }
+  const type = node.dataset.type ?? "";
+  const compositeId = node.dataset.id ?? "";
+  const code = node.dataset.code ?? "";
+
+  // For classification nodes in the technical tree, `data-code` carries the
+  // real DB identifier; prefer it to avoid parsing composite tree IDs.
+  if (
+    ["groupeEquip", "familleEquip", "sousFamilleEquip"].includes(type) &&
+    code &&
+    code !== "null" &&
+    code !== "undefined"
+  ) {
+    return code;
+  }
+
+  const typePrefixMap = {
+    unite: "unite-",
+    division: "division-",
+    departement: "departement-",
+    service: "service-",
+    equipement: "equipement-",
+    organe: "organe-",
+    article: "article-",
+    sousensemble: "sousensemble-",
+  };
+
+  const prefix = typePrefixMap[type];
+  if (prefix && compositeId.startsWith(prefix)) {
+    return compositeId.slice(prefix.length);
+  }
+
+  const extractLastSegment = (value) => {
+    if (!value) {
+      return "";
+    }
+    const parts = value.split("-").filter(Boolean);
+    return parts.length ? parts[parts.length - 1] : value;
+  };
+
+  if (type === "groupeEquip" && compositeId.startsWith("groupeequip-")) {
+    return extractLastSegment(compositeId);
+  }
+  if (type === "familleEquip" && compositeId.startsWith("familleequip-")) {
+    return extractLastSegment(compositeId);
+  }
+  if (
+    type === "sousFamilleEquip" &&
+    compositeId.startsWith("sousfamilleequip-")
+  ) {
+    return extractLastSegment(compositeId);
+  }
+
+  if (code && code !== "null" && code !== "undefined") {
+    return code;
+  }
+
+  return compositeId;
+};
+
+const getTreeAncestorByType = (node, targetType) => {
+  let current = node?.parentElement?.closest(".tree-node");
+  while (current) {
+    if ((current.dataset.type ?? "") === targetType) {
+      return current;
+    }
+    current = current.parentElement?.closest(".tree-node");
+  }
+  return null;
+};
+
+const buildTreeCreateAction = (node) => {
+  const nodeType = node.dataset.type ?? "";
+  const nodeName = node.dataset.name ?? "";
+  const nodeRawId = getTreeNodeRawId(node);
+
+  const setSelectValue = (selector, value, dispatchChange = false) => {
+    const input = document.querySelector(selector);
+    if (!input || !value) {
+      return;
+    }
+    input.value = value;
+    if (dispatchChange) {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  };
+
+  const actions = {
+    entreprise: {
+      label: "Créer une unité",
+      run: () => {
+        navigateTo("view-unites");
+        openOrgForm("unites", "create");
+      },
+    },
+    unite: {
+      label: "Créer une division",
+      run: () => {
+        navigateTo("view-divisions");
+        openOrgForm("divisions", "create", null, nodeRawId);
+      },
+    },
+    division: {
+      label: "Créer un département",
+      run: () => {
+        navigateTo("view-departements");
+        openOrgForm("departements", "create", null, nodeRawId);
+      },
+    },
+    departement: {
+      label: "Créer un service",
+      run: () => {
+        navigateTo("view-services");
+        openOrgForm("services", "create", null, nodeRawId);
+      },
+    },
+    service: {
+      label: "Créer un groupe équipement",
+      run: () => {
+        navigateTo("view-groupes-equip");
+        openEquipForm("groupes", "create");
+      },
+    },
+    groupeEquip: {
+      label: "Créer une famille équipement",
+      run: () => {
+        navigateTo("view-familles-equip");
+        openEquipForm("familles", "create");
+        setSelectValue("[data-equip-parent='familles']", nodeRawId);
+      },
+    },
+    familleEquip: {
+      label: "Créer une sous-famille équipement",
+      run: () => {
+        const groupNode = getTreeAncestorByType(node, "groupeEquip");
+        navigateTo("view-sousfamilles-equip");
+        openEquipForm("sousfamilles", "create");
+        const groupId = getTreeNodeRawId(groupNode);
+        setSelectValue("[data-equip-parent='sousfamilles']", groupId, true);
+        setSelectValue("[data-equip-family='sousfamilles']", nodeRawId);
+      },
+    },
+    sousFamilleEquip: {
+      label: "Créer un équipement",
+      run: () => {
+        const familyNode = getTreeAncestorByType(node, "familleEquip");
+        const groupNode = getTreeAncestorByType(node, "groupeEquip");
+        const serviceNode = getTreeAncestorByType(node, "service");
+        navigateTo("view-equipements");
+        openEquipForm("equipements", "create");
+        const groupId = getTreeNodeRawId(groupNode);
+        const familyId = getTreeNodeRawId(familyNode);
+        const serviceId = getTreeNodeRawId(serviceNode);
+        setSelectValue("[data-equip-group='equipements']", groupId, true);
+        setSelectValue("[data-equip-family='equipements']", familyId, true);
+        setSelectValue("[data-equip-subfamily='equipements']", nodeRawId);
+        setSelectValue("[data-equip-service='equipements']", serviceId, true);
+      },
+    },
+    equipement: {
+      label: "Créer un groupe organe",
+      run: () => {
+        navigateTo("view-groupes-organes");
+        openOrganForm("groupes", "create");
+      },
+    },
+    groupeOrgane: {
+      label: "Créer une famille organe",
+      run: () => {
+        navigateTo("view-familles-organes");
+        openOrganForm("familles", "create");
+        setSelectValue("[data-organ-parent='familles']", nodeRawId);
+      },
+    },
+    familleOrgane: {
+      label: "Créer une sous-famille organe",
+      run: () => {
+        const groupNode = getTreeAncestorByType(node, "groupeOrgane");
+        navigateTo("view-sousfamilles-organes");
+        openOrganForm("sousfamilles", "create");
+        const groupId = getTreeNodeRawId(groupNode);
+        setSelectValue("[data-organ-parent='sousfamilles']", groupId, true);
+        setSelectValue("[data-organ-family='sousfamilles']", nodeRawId);
+      },
+    },
+    sousFamilleOrgane: {
+      label: "Créer un organe",
+      run: () => {
+        const familyNode = getTreeAncestorByType(node, "familleOrgane");
+        const groupNode = getTreeAncestorByType(node, "groupeOrgane");
+        const equipNode = getTreeAncestorByType(node, "equipement");
+        navigateTo("view-organes");
+        openOrganForm("organes", "create");
+        const groupId = getTreeNodeRawId(groupNode);
+        const familyId = getTreeNodeRawId(familyNode);
+        const equipId = getTreeNodeRawId(equipNode);
+        setSelectValue("[data-organe-group='organes']", groupId, true);
+        setSelectValue("[data-organe-family='organes']", familyId, true);
+        setSelectValue("[data-organe-subfamily='organes']", nodeRawId);
+        setSelectValue("[data-organe-equipement='organes']", equipId, true);
+      },
+    },
+    organe: {
+      label: "Créer un groupe article",
+      run: () => {
+        navigateTo("view-groupes-articles");
+        openArticleForm("groupes", "create");
+      },
+    },
+    groupeArticle: {
+      label: "Créer une famille article",
+      run: () => {
+        navigateTo("view-familles-articles");
+        openArticleForm("familles", "create");
+        setSelectValue("[data-article-parent='familles']", nodeRawId);
+      },
+    },
+    familleArticle: {
+      label: "Créer une sous-famille article",
+      run: () => {
+        const groupNode = getTreeAncestorByType(node, "groupeArticle");
+        navigateTo("view-sousfamilles-articles");
+        openArticleForm("sousfamilles", "create");
+        const groupId = getTreeNodeRawId(groupNode);
+        setSelectValue("[data-article-parent='sousfamilles']", groupId, true);
+        setSelectValue("[data-article-family='sousfamilles']", nodeRawId);
+      },
+    },
+    sousFamilleArticle: {
+      label: "Créer un article",
+      run: () => {
+        const familyNode = getTreeAncestorByType(node, "familleArticle");
+        const groupNode = getTreeAncestorByType(node, "groupeArticle");
+        navigateTo("view-articles");
+        openArticleForm("articles", "create");
+        const groupId = getTreeNodeRawId(groupNode);
+        const familyId = getTreeNodeRawId(familyNode);
+        setSelectValue("[data-article-group='articles']", groupId, true);
+        setSelectValue("[data-article-family='articles']", familyId, true);
+        setSelectValue("[data-article-subfamily='articles']", nodeRawId);
+      },
+    },
+  };
+
+  const action = actions[nodeType];
+  if (!action) {
+    return null;
+  }
+  return { ...action, nodeName };
+};
+
+const showTreeContextMenu = (node, x, y) => {
+  ensureTreeContextMenu();
+  if (!treeContextMenuEl) {
+    return;
+  }
+
+  const action = buildTreeCreateAction(node);
+  if (!action) {
+    hideTreeContextMenu();
+    return;
+  }
+
+  treeContextMenuEl.innerHTML = `
+    <button type="button" class="btn btn-light w-100 text-start" id="tree-context-create-btn">
+      <i class="fa-solid fa-plus me-2"></i>${action.label}
+    </button>
+    <div class="small text-muted mt-2 px-1">${action.nodeName}</div>
+  `;
+  treeContextMenuEl.style.display = "block";
+  treeContextMenuEl.style.left = `${x}px`;
+  treeContextMenuEl.style.top = `${y}px`;
+
+  const menuRect = treeContextMenuEl.getBoundingClientRect();
+  const finalLeft = Math.min(x, window.innerWidth - menuRect.width - 8);
+  const finalTop = Math.min(y, window.innerHeight - menuRect.height - 8);
+  treeContextMenuEl.style.left = `${Math.max(8, finalLeft)}px`;
+  treeContextMenuEl.style.top = `${Math.max(8, finalTop)}px`;
+
+  const createBtn = document.getElementById("tree-context-create-btn");
+  if (createBtn) {
+    createBtn.addEventListener("click", () => {
+      hideTreeContextMenu();
+      action.run();
+    });
+  }
 };
 
 const bindTreeEvents = () => {
@@ -7155,11 +7758,21 @@ const bindTreeEvents = () => {
 
     if (label) {
       label.addEventListener("click", () => {
+        hideTreeContextMenu();
         treeNodes.forEach((item) => item.classList.remove("selected"));
         node.classList.add("selected");
         updateTreeDetails(node);
       });
     }
+
+    node.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      treeNodes.forEach((item) => item.classList.remove("selected"));
+      node.classList.add("selected");
+      updateTreeDetails(node);
+      showTreeContextMenu(node, event.clientX, event.clientY);
+    });
   });
 };
 
@@ -7270,10 +7883,16 @@ const updateTreeDetails = (node) => {
       "groupeEquip",
       "familleEquip",
       "sousFamilleEquip",
+      "groupeOrgane",
+      "familleOrgane",
+      "sousFamilleOrgane",
+      "groupeArticle",
+      "familleArticle",
+      "sousFamilleArticle",
     ].includes(nodeType);
     openButton.dataset.view = viewId;
     openButton.dataset.nodeType = nodeType;
-    openButton.dataset.nodeId = node.dataset.id ?? "";
+    openButton.dataset.nodeId = getTreeNodeRawId(node);
     openButton.disabled = !viewId && !hasModalDetail;
     openButton.textContent = hasModalDetail
       ? "Afficher le détail"
@@ -7283,16 +7902,24 @@ const updateTreeDetails = (node) => {
     // update delete button next to open
     const deleteBtn = document.getElementById("tree-detail-delete");
     if (deleteBtn) {
-      // map tree node types to equip levels
-      const nodeTypeToLevel = {
-        groupeEquip: "groupes",
-        familleEquip: "familles",
-        sousFamilleEquip: "sousfamilles",
+      const deleteTargetMap = {
+        groupeEquip: { domain: "equip", level: "groupes" },
+        familleEquip: { domain: "equip", level: "familles" },
+        sousFamilleEquip: { domain: "equip", level: "sousfamilles" },
+        groupeOrgane: { domain: "organ", level: "groupes" },
+        familleOrgane: { domain: "organ", level: "familles" },
+        sousFamilleOrgane: { domain: "organ", level: "sousfamilles" },
+        groupeArticle: { domain: "article", level: "groupes" },
+        familleArticle: { domain: "article", level: "familles" },
+        sousFamilleArticle: { domain: "article", level: "sousfamilles" },
       };
-      const levelKey = nodeTypeToLevel[nodeType] ?? "";
-      deleteBtn.dataset.level = levelKey;
-      deleteBtn.dataset.id = node.dataset.id ?? "";
-      deleteBtn.disabled = !levelKey;
+      const target = deleteTargetMap[nodeType] ?? null;
+      const canDeleteFromTree = Boolean(target);
+      deleteBtn.dataset.domain = target?.domain ?? "";
+      deleteBtn.dataset.level = target?.level ?? "";
+      deleteBtn.dataset.id = getTreeNodeRawId(node);
+      deleteBtn.disabled = !canDeleteFromTree;
+      deleteBtn.classList.toggle("d-none", !canDeleteFromTree);
     }
   }
 
@@ -8021,7 +8648,7 @@ document.addEventListener("click", (event) => {
   }
 
   const action = target.dataset.equipAction;
-  const level = target.dataset.level;
+  const level = normalizeEquipLevel(target.dataset.level);
   if (!action || !level) {
     return;
   }
@@ -8058,9 +8685,24 @@ document.addEventListener("click", (event) => {
   }
 
   if (action === "delete") {
-    const itemId = target.dataset.id;
+    let deleteLevel = level;
+    let itemId = target.dataset.id;
+
+    // For the tree side-panel delete button, always use the currently selected
+    // tree node as source of truth to avoid stale dataset values on the button.
+    if (target.id === "tree-detail-delete" && selectedTreeNode) {
+      const nodeType = selectedTreeNode.dataset.type ?? "";
+      const nodeTypeToLevel = {
+        groupeEquip: "groupes",
+        familleEquip: "familles",
+        sousFamilleEquip: "sousfamilles",
+      };
+      deleteLevel = normalizeEquipLevel(nodeTypeToLevel[nodeType] ?? deleteLevel);
+      itemId = selectedTreeNode.dataset.id ?? itemId;
+    }
+
     if (itemId) {
-      openEquipDelete(level, itemId);
+      openEquipDelete(deleteLevel, itemId);
     }
     return;
   }
@@ -11657,6 +12299,23 @@ if (sidebarBackdrop) {
   sidebarBackdrop.addEventListener("click", closeOverlays);
 }
 
+document.addEventListener("click", (event) => {
+  if (!treeContextMenuEl || treeContextMenuEl.style.display === "none") {
+    return;
+  }
+  if (!event.target.closest("#tree-context-menu")) {
+    hideTreeContextMenu();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    hideTreeContextMenu();
+  }
+});
+
+window.addEventListener("scroll", hideTreeContextMenu, true);
+
 document.querySelectorAll("[data-tree-action]").forEach((button) => {
   button.addEventListener("click", () => {
     if (!selectedTreeNode) {
@@ -11705,7 +12364,7 @@ if (treeOpenButton) {
     }
 
     const nodeType = selectedTreeNode.dataset.type ?? "";
-    const nodeId = selectedTreeNode.dataset.id ?? "";
+    const nodeId = getTreeNodeRawId(selectedTreeNode);
     if (
       ["groupeEquip", "familleEquip", "sousFamilleEquip"].includes(nodeType)
     ) {
@@ -11713,6 +12372,34 @@ if (treeOpenButton) {
         nodeType === "groupeEquip"
           ? "groupes"
           : nodeType === "familleEquip"
+            ? "familles"
+            : "sousfamilles",
+        nodeId,
+      );
+      return;
+    }
+    if (
+      ["groupeOrgane", "familleOrgane", "sousFamilleOrgane"].includes(nodeType)
+    ) {
+      openOrganDetail(
+        nodeType === "groupeOrgane"
+          ? "groupes"
+          : nodeType === "familleOrgane"
+            ? "familles"
+            : "sousfamilles",
+        nodeId,
+      );
+      return;
+    }
+    if (
+      ["groupeArticle", "familleArticle", "sousFamilleArticle"].includes(
+        nodeType,
+      )
+    ) {
+      openArticleDetail(
+        nodeType === "groupeArticle"
+          ? "groupes"
+          : nodeType === "familleArticle"
             ? "familles"
             : "sousfamilles",
         nodeId,
@@ -11730,6 +12417,33 @@ if (treeOpenButton) {
     }
 
     navigateTo(viewId);
+  });
+}
+
+const treeDeleteButton = document.getElementById("tree-detail-delete");
+if (treeDeleteButton) {
+  treeDeleteButton.addEventListener("click", () => {
+    if (!selectedTreeNode) {
+      return;
+    }
+    const domain = treeDeleteButton.dataset.domain ?? "";
+    const level = treeDeleteButton.dataset.level ?? "";
+    const itemId = getTreeNodeRawId(selectedTreeNode);
+    if (!level || !itemId) {
+      return;
+    }
+
+    if (domain === "equip") {
+      openEquipDelete(level, itemId);
+      return;
+    }
+    if (domain === "organ") {
+      openOrganDelete(level, itemId);
+      return;
+    }
+    if (domain === "article") {
+      openArticleDelete(level, itemId);
+    }
   });
 }
 
@@ -11754,6 +12468,10 @@ function openQuickCreateModal(type) {
   const qcNom = document.getElementById("quick-create-nom");
   const parentRow = document.getElementById("quick-create-parent-row");
   const parentLabel = document.getElementById("quick-create-parent-label");
+  const groupRow = document.getElementById("quick-create-group-row");
+  const groupSelect = document.getElementById("quick-create-group-select");
+  const familyRow = document.getElementById("quick-create-family-row");
+  const familySelect = document.getElementById("quick-create-family-select");
   if (!modalEl || !qcTitle || !qcCode || !qcNom || !bootstrapAvailable) {
     return;
   }
@@ -11874,6 +12592,15 @@ function openQuickCreateModal(type) {
   qcCode.value = `${cfg.prefix}${codeSep}${nextNum}`;
   qcNom.value = "";
   qcNom.classList.remove("is-invalid");
+  if (groupRow) groupRow.style.display = "none";
+  if (familyRow) familyRow.style.display = "none";
+  if (groupSelect) {
+    groupSelect.onchange = null;
+    groupSelect.innerHTML = "";
+  }
+  if (familySelect) {
+    familySelect.innerHTML = "";
+  }
 
   const getQuickCreateParentItems = () => {
     if (cfg.parentKey === "groupeId") {
@@ -11903,6 +12630,80 @@ function openQuickCreateModal(type) {
     }
   } else if (parentRow) {
     parentRow.style.display = "none";
+  }
+
+  const currentGroupSelect = cfg.classificationDomain
+    ? document.querySelector(
+        cfg.classificationDomain === "equip"
+          ? "[data-equip-group='equipements']"
+          : cfg.classificationDomain === "organ"
+            ? "[data-organe-group='organes']"
+            : "[data-article-group='articles']",
+      )
+    : null;
+
+  const buildOptions = (items, selectedId) =>
+    [`<option value="">Sélectionner</option>`]
+      .concat(
+        items.map(
+          (item) =>
+            `<option value="${item.id}" ${item.id === selectedId ? "selected" : ""}>${item.nom}</option>`,
+        ),
+      )
+      .join("");
+
+  if (
+    cfg.classificationLevel === "familles" &&
+    groupRow &&
+    groupSelect &&
+    cfg.classificationDomain
+  ) {
+    const groups =
+      cfg.classificationDomain === "equip"
+        ? groupesEquipements
+        : cfg.classificationDomain === "organ"
+          ? groupesOrganes
+          : groupesArticles;
+    const selectedGroupId = currentGroupSelect?.value ?? "";
+    groupSelect.innerHTML = buildOptions(groups, selectedGroupId);
+    groupRow.style.display = "block";
+  }
+
+  if (
+    cfg.classificationLevel === "sousfamilles" &&
+    groupRow &&
+    groupSelect &&
+    familyRow &&
+    familySelect &&
+    cfg.classificationDomain
+  ) {
+    const groups =
+      cfg.classificationDomain === "equip"
+        ? groupesEquipements
+        : cfg.classificationDomain === "organ"
+          ? groupesOrganes
+          : groupesArticles;
+    const families =
+      cfg.classificationDomain === "equip"
+        ? famillesEquipements
+        : cfg.classificationDomain === "organ"
+          ? famillesOrganes
+          : famillesArticles;
+
+    const selectedGroupId = currentGroupSelect?.value ?? "";
+    groupSelect.innerHTML = buildOptions(groups, selectedGroupId);
+    groupRow.style.display = "block";
+    familyRow.style.display = "block";
+
+    const renderFamilies = (groupId) => {
+      const filtered = groupId
+        ? families.filter((fam) => fam.groupeId === groupId)
+        : families;
+      familySelect.innerHTML = buildOptions(filtered, "");
+    };
+
+    renderFamilies(selectedGroupId);
+    groupSelect.onchange = () => renderFamilies(groupSelect.value || "");
   }
 
   const modal = new bootstrap.Modal(modalEl);
@@ -11935,8 +12736,8 @@ async function confirmQuickCreate() {
         : "article";
 
   if (cfg.classificationLevel === "familles") {
-    const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
-    const groupeId = parentSelect?.value?.trim();
+    const modalGroupSelect = document.getElementById("quick-create-group-select");
+    const groupeId = modalGroupSelect?.value?.trim();
     if (!groupeId) {
       showToast(
         `S\u00e9lectionnez un groupe ${domainLabel} avant la cr\u00e9ation rapide.`,
@@ -11947,8 +12748,8 @@ async function confirmQuickCreate() {
   }
 
   if (cfg.classificationLevel === "sousfamilles") {
-    const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
-    const familleId = parentSelect?.value?.trim();
+    const modalFamilySelect = document.getElementById("quick-create-family-select");
+    const familleId = modalFamilySelect?.value?.trim();
     if (!familleId) {
       showToast(
         `S\u00e9lectionnez une famille ${domainLabel} avant la cr\u00e9ation rapide.`,
@@ -11968,13 +12769,13 @@ async function confirmQuickCreate() {
   const values = { code: qcCodeEl.value, nom };
 
   if (cfg.classificationLevel === "familles") {
-    const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
-    values.groupeId = parentSelect?.value ?? "";
+    const modalGroupSelect = document.getElementById("quick-create-group-select");
+    values.groupeId = modalGroupSelect?.value ?? "";
   }
 
   if (cfg.classificationLevel === "sousfamilles") {
-    const parentSelect = document.querySelector(cfg.parentSelectSelector ?? "");
-    values.familleId = parentSelect?.value ?? "";
+    const modalFamilySelect = document.getElementById("quick-create-family-select");
+    values.familleId = modalFamilySelect?.value ?? "";
     const familles =
       cfg.classificationDomain === "equip"
         ? famillesEquipements
