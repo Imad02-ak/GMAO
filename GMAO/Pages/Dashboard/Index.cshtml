@@ -583,9 +583,8 @@
                                 <span id="tree-detail-level" class="badge bg-primary">Niveau</span>
                             </div>
                             <div class="d-flex gap-2">
-                                <button class="btn btn-outline-primary btn-sm" data-tree-action="edit"><i class="fa-solid fa-edit"></i> Modifier</button>
-                                <button class="btn btn-outline-success btn-sm" data-tree-action="add"><i class="fa-solid fa-plus"></i> Ajouter un sous-niveau</button>
-                                <button class="btn btn-outline-danger btn-sm" data-tree-action="delete"><i class="fa-solid fa-trash"></i> Supprimer</button>
+                                <button class="btn btn-primary btn-sm" id="tree-detail-open"><i class="fa-solid fa-eye"></i> Afficher</button>
+                                <button class="btn btn-danger btn-sm" id="tree-detail-delete" data-equip-action="delete" data-level="" data-id="" disabled><i class="fa-solid fa-trash"></i> Supprimer</button>
                             </div>
                         </div>
                         <div class="card-body">
@@ -1944,6 +1943,54 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
                 </div>
                 <div class="modal-body" id="detail-equipements-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-groupes-equip-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Groupe Équipements</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-groupes-equip-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-danger" data-equip-action="delete" data-level="groupes" data-id="">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-familles-equip-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Famille Équipements</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-familles-equip-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-danger" data-equip-action="delete" data-level="familles" data-id="">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-sousfamilles-equip-detail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Détails Sous-famille Équipements</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body" id="detail-sousfamilles-equip-body"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="button" class="btn btn-danger" data-equip-action="delete" data-level="sousfamilles" data-id="">Supprimer</button>
+                </div>
             </div>
         </div>
     </div>

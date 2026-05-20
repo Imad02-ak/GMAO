@@ -61,7 +61,175 @@ public class IndexModel : PageModel
 
     public async Task<JsonResult> OnGetTreeAsync(string entrepriseId)
     {
-        return new JsonResult(Array.Empty<object>()) { StatusCode = 200 };
+        var resolvedEntrepriseId = ResolveEntrepriseId(entrepriseId);
+        if (string.IsNullOrWhiteSpace(resolvedEntrepriseId))
+        {
+            return new JsonResult(Array.Empty<object>()) { StatusCode = 200 };
+        }
+
+        var groupes = await _db.GroupesEquipements.AsNoTracking()
+            .OrderBy(g => g.Nom)
+            .Select(g => new
+            {
+                id = g.Id,
+                code = g.Code,
+                nom = g.Nom,
+                designation = g.Description
+            })
+            .ToListAsync();
+
+        var familles = await _db.FamillesEquipements.AsNoTracking()
+            .OrderBy(f => f.Nom)
+            .Select(f => new
+            {
+                id = f.Id,
+                code = f.Code,
+                nom = f.Nom,
+                designation = f.Description,
+                groupeId = f.GroupeId
+            })
+            .ToListAsync();
+
+        var sousFamilles = await _db.SousFamillesEquipements.AsNoTracking()
+            .OrderBy(sf => sf.Nom)
+            .Select(sf => new
+            {
+                id = sf.Id,
+                code = sf.Code,
+                nom = sf.Nom,
+                designation = sf.Description,
+                familleId = sf.FamilleId,
+                groupeId = sf.GroupeId
+            })
+            .ToListAsync();
+
+        var equipements = await _db.Equipements.AsNoTracking()
+            .Where(eq => eq.ServiceId != null
+                && _db.Services.Any(service => service.Id == eq.ServiceId
+                    && _db.Departements.Any(dep => dep.Id == service.DepartementId
+                        && _db.Divisions.Any(div => div.Id == dep.DivisionId
+                            && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == resolvedEntrepriseId)))))
+            .OrderBy(eq => eq.Nom)
+            .Select(eq => new
+            {
+                id = eq.Id,
+                code = eq.Code ?? eq.Tag,
+                nom = eq.Nom,
+                criticite = string.IsNullOrWhiteSpace(eq.Criticite) ? "1" : eq.Criticite,
+                statut = string.IsNullOrWhiteSpace(eq.Statut) ? "En service" : eq.Statut,
+                serviceId = eq.ServiceId,
+                serviceNom = _db.Services.Where(service => service.Id == eq.ServiceId).Select(service => service.Nom).FirstOrDefault(),
+                groupeId = eq.GroupeId,
+                groupeNom = eq.GroupeNom,
+                familleId = eq.FamilleId,
+                familleNom = eq.FamilleNom,
+                sousFamilleId = eq.SousFamilleId,
+                sousFamilleNom = eq.SousFamilleNom,
+                localisation = _db.Services.Where(service => service.Id == eq.ServiceId)
+                    .Select(service => service.Nom)
+                    .FirstOrDefault()
+            })
+            .ToListAsync();
+
+        object BuildEquipmentNode(dynamic eq) => new
+        {
+            type = "equipement",
+            id = eq.id,
+            code = eq.code,
+            nom = eq.nom,
+            criticite = eq.criticite,
+            statut = eq.statut,
+            serviceId = eq.serviceId,
+            serviceNom = eq.serviceNom,
+            groupeId = eq.groupeId,
+            groupeNom = eq.groupeNom,
+            familleId = eq.familleId,
+            familleNom = eq.familleNom,
+            sousFamilleId = eq.sousFamilleId,
+            sousFamilleNom = eq.sousFamilleNom,
+            localisation = eq.localisation,
+            children = Array.Empty<object>()
+        };
+
+        object BuildSousFamilleNode(dynamic sousFamille, dynamic famille, dynamic groupe)
+        {
+            var equipmentChildren = equipements
+                .Where(eq => eq.sousFamilleId == sousFamille.id)
+                .Select(eq => BuildEquipmentNode(eq))
+                .ToList();
+
+            return new
+            {
+                type = "sousFamilleEquip",
+                id = sousFamille.id,
+                code = sousFamille.code,
+                nom = sousFamille.nom,
+                designation = sousFamille.designation,
+                groupeId = sousFamille.groupeId,
+                groupeNom = groupe.nom,
+                familleId = sousFamille.familleId,
+                familleNom = famille.nom,
+                children = equipmentChildren
+            };
+        }
+
+        object BuildFamilleNode(dynamic famille, dynamic groupe)
+        {
+            var subFamilyChildren = sousFamilles
+                .Where(sousFamille => sousFamille.familleId == famille.id)
+                .Select(sousFamille => BuildSousFamilleNode(sousFamille, famille, groupe))
+                .ToList();
+
+            var directEquipmentChildren = equipements
+                .Where(eq => eq.familleId == famille.id && string.IsNullOrWhiteSpace(eq.sousFamilleId))
+                .Select(eq => BuildEquipmentNode(eq))
+                .ToList();
+
+            return new
+            {
+                type = "familleEquip",
+                id = famille.id,
+                code = famille.code,
+                nom = famille.nom,
+                designation = famille.designation,
+                groupeId = famille.groupeId,
+                groupeNom = groupe.nom,
+                children = subFamilyChildren.Concat(directEquipmentChildren).ToList()
+            };
+        }
+
+        var tree = groupes
+            .Select(groupe =>
+            {
+                var familyChildren = familles
+                    .Where(famille => famille.groupeId == groupe.id)
+                    .Select(famille => BuildFamilleNode(famille, groupe))
+                    .ToList();
+
+                var directEquipmentChildren = equipements
+                    .Where(eq => eq.groupeId == groupe.id && string.IsNullOrWhiteSpace(eq.familleId))
+                    .Select(eq => BuildEquipmentNode(eq))
+                    .ToList();
+
+                return new
+                {
+                    type = "groupeEquip",
+                    id = groupe.id,
+                    code = groupe.code,
+                    nom = groupe.nom,
+                    designation = groupe.designation,
+                    children = familyChildren.Concat(directEquipmentChildren).ToList()
+                };
+            })
+            .Where(node => node.children.Count > 0)
+            .Cast<object>()
+            .Concat(
+                equipements
+                    .Where(eq => string.IsNullOrWhiteSpace(eq.groupeId))
+                    .Select(eq => BuildEquipmentNode(eq)))
+            .ToList();
+
+        return new JsonResult(tree) { StatusCode = 200 };
     }
 
     public async Task<JsonResult> OnGetUnitesAsync(string entrepriseId)
@@ -609,7 +777,7 @@ public class IndexModel : PageModel
 
         if (unite is null)
         {
-            return ErrorResult("Unitù introuvable.");
+            return ErrorResult("UnitÔøΩ introuvable.");
         }
 
         unite.Code = NormalizeOrFallback(request.Code, "UNT-");
@@ -635,7 +803,7 @@ public class IndexModel : PageModel
     public async Task<JsonResult> OnPostSaveGroupeEquipementAsync([FromBody] GroupeEquipementRequest request)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.Nom))
-            return ErrorResult("Requùte invalide.");
+            return ErrorResult("RequÔøΩte invalide.");
 
         GroupeEquipement groupe = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
@@ -658,7 +826,7 @@ public class IndexModel : PageModel
     public async Task<JsonResult> OnPostSaveFamilleEquipementAsync([FromBody] FamilleEquipementRequest request)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.Nom))
-            return ErrorResult("Requùte invalide.");
+            return ErrorResult("RequÔøΩte invalide.");
 
         if (!string.IsNullOrWhiteSpace(request.GroupeId))
         {
@@ -688,7 +856,7 @@ public class IndexModel : PageModel
     public async Task<JsonResult> OnPostSaveSousFamilleEquipementAsync([FromBody] SousFamilleEquipementRequest request)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.Nom))
-            return ErrorResult("Requùte invalide.");
+            return ErrorResult("RequÔøΩte invalide.");
 
         if (!string.IsNullOrWhiteSpace(request.FamilleId))
         {
@@ -719,7 +887,7 @@ public class IndexModel : PageModel
     // Organe groups
     public async Task<JsonResult> OnPostSaveGroupeOrganeAsync([FromBody] GroupeOrganeRequest request)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requùte invalide.");
+        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("RequÔøΩte invalide.");
         GroupeOrgane g = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
@@ -737,7 +905,7 @@ public class IndexModel : PageModel
 
     public async Task<JsonResult> OnPostSaveFamilleOrganeAsync([FromBody] FamilleOrganeRequest request)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requùte invalide.");
+        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("RequÔøΩte invalide.");
         if (!string.IsNullOrWhiteSpace(request.GroupeId) && await _db.GroupesOrganes.FindAsync(request.GroupeId) is null)
             return ErrorResult("Groupe parent invalide.");
         FamilleOrgane f = null;
@@ -758,7 +926,7 @@ public class IndexModel : PageModel
 
     public async Task<JsonResult> OnPostSaveSousFamilleOrganeAsync([FromBody] SousFamilleOrganeRequest request)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requùte invalide.");
+        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("RequÔøΩte invalide.");
         if (!string.IsNullOrWhiteSpace(request.FamilleId) && await _db.FamillesOrganes.FindAsync(request.FamilleId) is null)
             return ErrorResult("Famille parent invalide.");
         SousFamilleOrgane s = null;
@@ -781,7 +949,7 @@ public class IndexModel : PageModel
     // Article groups
     public async Task<JsonResult> OnPostSaveGroupeArticleAsync([FromBody] GroupeArticleRequest request)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requùte invalide.");
+        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("RequÔøΩte invalide.");
         GroupeArticle g = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
@@ -799,7 +967,7 @@ public class IndexModel : PageModel
 
     public async Task<JsonResult> OnPostSaveFamilleArticleAsync([FromBody] FamilleArticleRequest request)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requùte invalide.");
+        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("RequÔøΩte invalide.");
         if (!string.IsNullOrWhiteSpace(request.GroupeId) && await _db.GroupesArticles.FindAsync(request.GroupeId) is null)
             return ErrorResult("Groupe parent invalide.");
         FamilleArticle f = null;
@@ -820,7 +988,7 @@ public class IndexModel : PageModel
 
     public async Task<JsonResult> OnPostSaveSousFamilleArticleAsync([FromBody] SousFamilleArticleRequest request)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requùte invalide.");
+        if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("RequÔøΩte invalide.");
         if (!string.IsNullOrWhiteSpace(request.FamilleId) && await _db.FamillesArticles.FindAsync(request.FamilleId) is null)
             return ErrorResult("Famille parent invalide.");
         SousFamilleArticle s = null;
@@ -844,7 +1012,7 @@ public class IndexModel : PageModel
     {
         if (request is null)
         {
-            return ErrorResult("Requùte invalide.");
+            return ErrorResult("RequÔøΩte invalide.");
         }
 
         var entrepriseId = ResolveEntrepriseId(request.EntrepriseId);
@@ -865,7 +1033,7 @@ public class IndexModel : PageModel
                         && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == entrepriseId)))));
         if (equipement is null)
         {
-            return ErrorResult("ùquipement invalide.");
+            return ErrorResult("ÔøΩquipement invalide.");
         }
 
         Organe? organe = null;
@@ -940,7 +1108,7 @@ public class IndexModel : PageModel
         var unite = await _db.Unites.FirstOrDefaultAsync(u => u.Id == request.UniteId && u.EntrepriseId == entrepriseId);
         if (unite is null)
         {
-            return ErrorResult("Unitù principale invalide.");
+            return ErrorResult("UnitÔøΩ principale invalide.");
         }
 
         var division = string.IsNullOrWhiteSpace(request.Id)
@@ -993,7 +1161,7 @@ public class IndexModel : PageModel
 
         if (departement is null)
         {
-            return ErrorResult("Dùpartement introuvable.");
+            return ErrorResult("DÔøΩpartement introuvable.");
         }
 
         departement.Code = NormalizeOrFallback(request.Code, "DEP-");
@@ -1028,7 +1196,7 @@ public class IndexModel : PageModel
         var departement = await _db.Departements.FirstOrDefaultAsync(d => d.Id == request.DepartementId && _db.Divisions.Any(div => div.Id == d.DivisionId && _db.Unites.Any(u => u.Id == div.UniteId && u.EntrepriseId == entrepriseId)));
         if (departement is null)
         {
-            return ErrorResult("Dùpartement parent invalide.");
+            return ErrorResult("DÔøΩpartement parent invalide.");
         }
 
         var service = string.IsNullOrWhiteSpace(request.Id)
@@ -1059,7 +1227,7 @@ public class IndexModel : PageModel
     {
         if (request is null)
         {
-            return ErrorResult("Requùte invalide.");
+            return ErrorResult("RequÔøΩte invalide.");
         }
 
         var entrepriseId = ResolveEntrepriseId(request.EntrepriseId);
@@ -1092,7 +1260,7 @@ public class IndexModel : PageModel
                             && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == entrepriseId)))));
             if (equipement is null)
             {
-                return ErrorResult("ùquipement introuvable.");
+                return ErrorResult("ÔøΩquipement introuvable.");
             }
         }
 
@@ -1132,7 +1300,7 @@ public class IndexModel : PageModel
                             && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == entrepriseId)))));
             if (duplicateCode)
             {
-                return ErrorResult("Un Èquipement avec ce code existe dÈj‡.");
+                return ErrorResult("Un ÔøΩquipement avec ce code existe dÔøΩjÔøΩ.");
             }
 
             _db.Equipements.Add(equipement);
@@ -1145,7 +1313,7 @@ public class IndexModel : PageModel
     {
         if (request is null)
         {
-            return ErrorResult("Requùte invalide.");
+            return ErrorResult("RequÔøΩte invalide.");
         }
 
         var entrepriseId = ResolveEntrepriseId(request.EntrepriseId);
@@ -1241,7 +1409,7 @@ public class IndexModel : PageModel
         var unite = await _db.Unites.FirstOrDefaultAsync(u => u.Id == request.Id && u.EntrepriseId == entrepriseId);
         if (unite is null)
         {
-            return ErrorResult("Unitù introuvable.");
+            return ErrorResult("UnitÔøΩ introuvable.");
         }
 
         _db.Unites.Remove(unite);
@@ -1282,7 +1450,7 @@ public class IndexModel : PageModel
                 && _db.Unites.Any(u => u.Id == div.UniteId && u.EntrepriseId == entrepriseId)));
         if (departement is null)
         {
-            return ErrorResult("Dùpartement introuvable.");
+            return ErrorResult("DÔøΩpartement introuvable.");
         }
 
         _db.Departements.Remove(departement);
@@ -1473,7 +1641,7 @@ public class IndexModel : PageModel
             || string.IsNullOrWhiteSpace(request.Telephone)
             || string.IsNullOrWhiteSpace(request.Email))
         {
-            error = "Veuillez remplir tous les champs obligatoires de l'unitù.";
+            error = "Veuillez remplir tous les champs obligatoires de l'unitÔøΩ.";
             return false;
         }
 
@@ -1500,7 +1668,7 @@ public class IndexModel : PageModel
             || string.IsNullOrWhiteSpace(request.Marque)
             || string.IsNullOrWhiteSpace(request.ServiceId))
         {
-            error = "Veuillez remplir tous les champs obligatoires de l'ùquipement.";
+            error = "Veuillez remplir tous les champs obligatoires de l'ÔøΩquipement.";
             return false;
         }
 
@@ -1545,7 +1713,7 @@ public class IndexModel : PageModel
             || string.IsNullOrWhiteSpace(request.Telephone)
             || string.IsNullOrWhiteSpace(request.Email))
         {
-            error = "Veuillez remplir tous les champs obligatoires du dùpartement.";
+            error = "Veuillez remplir tous les champs obligatoires du dÔøΩpartement.";
             return false;
         }
 
