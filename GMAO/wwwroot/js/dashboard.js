@@ -229,6 +229,55 @@ const buildEquipementPayload = (values, context) => {
   };
 };
 
+const buildArticlePayload = (values, context) => {
+  const stockActuel = toOptionalNumber(values.stockActuel);
+  const stockMinimum = toOptionalNumber(values.stockMinimum);
+  const stockCritique = toOptionalNumber(values.stockCritique);
+  const prixUnitaire = toOptionalNumber(values.prixUnitaire);
+
+  return {
+    id: context?.mode === "edit" ? context.itemId : undefined,
+    code: values.code?.trim() || undefined,
+    designation: values.designation?.trim(),
+    referenceInterne: values.referenceInterne?.trim() || undefined,
+    referenceFabricant: values.referenceFabricant?.trim() || undefined,
+    marque: values.marque?.trim() || undefined,
+    fournisseur: values.fournisseur?.trim() || undefined,
+    type: values.type?.trim() || undefined,
+    uniteMesure: values.uniteMesure?.trim() || undefined,
+    stockActuel,
+    emplacementStock: values.emplacementStock?.trim() || undefined,
+    stockMinimum,
+    stockCritique,
+    qteReapprovisionnement: toOptionalNumber(values.qteReapprovisionnement),
+    prixUnitaire,
+    valeurTotale:
+      stockActuel !== null && prixUnitaire !== null
+        ? stockActuel * prixUnitaire
+        : toOptionalNumber(values.valeurTotale),
+    dateInventaire: toOptionalDate(values.dateInventaire),
+    dateDernierMouvement: toOptionalDate(values.dateDernierMouvement),
+    photo: values.photo || undefined,
+    documents: Array.isArray(values.documents) ? values.documents : undefined,
+    notes: values.notes?.trim() || undefined,
+    groupeId: values.groupeId?.trim() || undefined,
+    groupeNom: values.groupeNom?.trim() || undefined,
+    familleId: values.familleId?.trim() || undefined,
+    familleNom: values.familleNom?.trim() || undefined,
+    sousFamilleId: values.sousFamilleId?.trim() || undefined,
+    sousFamilleNom: values.sousFamilleNom?.trim() || undefined,
+    organeLinks: Array.isArray(values.organeLinks)
+      ? values.organeLinks.map((link) => ({
+          organeId: link.organeId?.trim() || undefined,
+          organeNom: link.organeNom?.trim() || undefined,
+          equipementNom: link.equipementNom?.trim() || undefined,
+          qteUtilisee: toOptionalNumber(link.qteUtilisee) ?? 1,
+        }))
+      : undefined,
+    entrepriseId: ENTREPRISE_ID,
+  };
+};
+
 const normalizeTreeNodes = (nodes) => {
   if (!Array.isArray(nodes)) {
     return [];
@@ -2929,7 +2978,7 @@ const readOrgFormValues = (level) => {
   return values;
 };
 
-const saveOrgForm = (level) => {
+const saveOrgForm = async (level) => {
   const values = readOrgFormValues(level);
   if (!values) {
     return;
@@ -2954,6 +3003,75 @@ const saveOrgForm = (level) => {
     }
   }
 
+  // Try to save via server API first
+  const handlerMap = {
+    unites: "SaveUnite",
+    divisions: "SaveDivision",
+    departements: "SaveDepartement",
+    services: "SaveService",
+  };
+  const handler = handlerMap[level];
+  if (handler) {
+    try {
+      const payload = {
+        id: isEdit ? orgFormContext?.itemId : undefined,
+        code: values.code?.trim() || undefined,
+        nom: values.nom?.trim(),
+        wilaya: values.wilaya?.trim(),
+        daira: values.daira?.trim(),
+        commune: values.commune?.trim(),
+        adresse: values.adresse?.trim() || undefined,
+        description: values.description?.trim() || undefined,
+        entrepriseId: ENTREPRISE_ID,
+      };
+
+      if (level === "unites") {
+        payload.directeur = values.directeur?.trim();
+        payload.telephone = values.telephone?.trim();
+        payload.email = values.email?.trim();
+      }
+      if (level === "divisions") {
+        payload.responsable = values.responsable?.trim();
+        payload.telephone = values.telephone?.trim();
+        payload.email = values.email?.trim();
+        payload.uniteId = values.uniteId?.trim() || undefined;
+      }
+      if (level === "departements") {
+        payload.chef = values.chef?.trim();
+        payload.telephone = values.telephone?.trim();
+        payload.email = values.email?.trim();
+        payload.divisionId = values.divisionId?.trim() || undefined;
+      }
+      if (level === "services") {
+        payload.chef = values.chef?.trim();
+        payload.telephone = values.telephone?.trim();
+        payload.email = values.email?.trim();
+        payload.departementId = values.departementId?.trim() || undefined;
+      }
+
+      const response = await fetch(`?handler=${handler}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          RequestVerificationToken: getAntiforgeryToken(),
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (result.success) {
+        await loadAllData();
+        orgFormModals[level]?.hide();
+        showToast(`${config.label} enregistr\u00e9`, "success");
+      } else {
+        showToast(`Erreur: ${result.error}`, "danger");
+      }
+    } catch (error) {
+      showToast(`Erreur: ${error.message}`, "danger");
+    }
+    return;
+  }
+
+  // Fallback: memory-only
   if (isEdit && orgFormContext?.itemId) {
     const index = items.findIndex((item) => item.id === orgFormContext.itemId);
     if (index >= 0) {
@@ -3134,11 +3252,44 @@ const cascadeOrgDelete = (level, itemId) => {
   }
 };
 
-const confirmOrgDelete = (level) => {
+const confirmOrgDelete = async (level) => {
   if (!pendingOrgDelete || pendingOrgDelete.level !== level) {
     return;
   }
 
+  // Try to delete via server API first
+  const handlerMap = {
+    unites: "DeleteUnite",
+    divisions: "DeleteDivision",
+    departements: "DeleteDepartement",
+    services: "DeleteService",
+  };
+  const handler = handlerMap[level];
+  if (handler) {
+    try {
+      const response = await fetch(`?handler=${handler}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          RequestVerificationToken: getAntiforgeryToken(),
+        },
+        body: JSON.stringify({ id: pendingOrgDelete.itemId }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "Erreur lors de la suppression.");
+      }
+      pendingOrgDelete = null;
+      await loadAllData();
+      orgDeleteModals[level]?.hide();
+      showToast(`${getOrgConfig(level)?.label} supprim\u00e9.`, "success");
+    } catch (error) {
+      showToast(`Erreur: ${error.message}`, "danger");
+    }
+    return;
+  }
+
+  // Fallback: cascade in memory only
   cascadeOrgDelete(level, pendingOrgDelete.itemId);
   pendingOrgDelete = null;
   renderOrgTables();
@@ -4034,12 +4185,12 @@ const renderEquipClassificationDetail = (level, item) => {
       : level === "familles"
         ? equipements.filter((eq) => eq.familleId === item.id).length
         : equipements.filter((eq) => eq.sousFamilleId === item.id).length;
-    if (level === "groupes") {
+  if (level === "groupes") {
     const families =
       famillesEquipements
-      .filter((entry) => entry.groupeId === item.id)
-      .map((entry) => `<li>${entry.nom}</li>`)
-      .join("") || "<li>Aucune famille associée</li>";
+        .filter((entry) => entry.groupeId === item.id)
+        .map((entry) => `<li>${entry.nom}</li>`)
+        .join("") || "<li>Aucune famille associée</li>";
 
     return `
         <div class="mb-3">
@@ -4055,14 +4206,14 @@ const renderEquipClassificationDetail = (level, item) => {
           <div class="fw-semibold mb-2">Familles associées</div>
           <ul class="mb-0">${families}</ul>
         </div>`;
-    }
+  }
 
-    if (level === "familles") {
+  if (level === "familles") {
     const subFamilies =
       sousFamillesEquipements
-      .filter((entry) => entry.familleId === item.id)
-      .map((entry) => `<li>${entry.nom}</li>`)
-      .join("") || "<li>Aucune sous-famille associée</li>";
+        .filter((entry) => entry.familleId === item.id)
+        .map((entry) => `<li>${entry.nom}</li>`)
+        .join("") || "<li>Aucune sous-famille associée</li>";
 
     return `
         <div class="mb-3">
@@ -4077,15 +4228,15 @@ const renderEquipClassificationDetail = (level, item) => {
           <div class="fw-semibold mb-2">Sous-familles associées</div>
           <ul class="mb-0">${subFamilies}</ul>
         </div>`;
-    }
+  }
 
-    const equipmentsList =
+  const equipmentsList =
     equipements
       .filter((entry) => entry.sousFamilleId === item.id)
       .map((entry) => `<li>${entry.nom}</li>`)
       .join("") || "<li>Aucun équipement associé</li>";
 
-    return `
+  return `
       <div class="mb-3">
         <span class="fw-bold fs-5">${item.nom}</span>
       </div>
@@ -4141,7 +4292,9 @@ const openEquipDetail = (levelOrItemId, maybeItemId) => {
   if (level !== "equipements") {
     body.innerHTML = renderEquipClassificationDetail(level, item);
     try {
-      const deleteBtn = modalElement.querySelector('[data-equip-action="delete"]');
+      const deleteBtn = modalElement.querySelector(
+        '[data-equip-action="delete"]',
+      );
       if (deleteBtn) {
         deleteBtn.dataset.id = item.id;
         deleteBtn.dataset.level = level;
@@ -4239,7 +4392,7 @@ const openEquipDelete = (level, itemId) => {
 
   const fallbackName =
     selectedTreeNode?.dataset?.id === itemId
-      ? selectedTreeNode.dataset.name ?? ""
+      ? (selectedTreeNode.dataset.name ?? "")
       : "";
   const displayName = item?.nom || fallbackName || "cet élément";
 
@@ -4298,7 +4451,11 @@ const deleteClassification = async (handler, itemId) => {
   }
 };
 
-const resolveEquipClassificationId = (level, candidateId, candidateName = "") => {
+const resolveEquipClassificationId = (
+  level,
+  candidateId,
+  candidateName = "",
+) => {
   const items = getEquipItems(level);
   const matched = items.find(
     (entry) =>
@@ -4820,6 +4977,7 @@ const saveOrganForm = async (level) => {
       });
       const result = await response.json();
       if (result.success) {
+        organFormContext = null;
         await loadAllData();
         organFormModals[level]?.hide();
       } else {
@@ -5654,14 +5812,16 @@ const saveArticleForm = async (level) => {
     try {
       const response = await fetch("?handler=SaveArticle", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           RequestVerificationToken: getAntiforgeryToken(),
         },
-        body: JSON.stringify({ ...values, entrepriseId: ENTREPRISE_ID }),
+        body: JSON.stringify(buildArticlePayload(values, articleFormContext)),
       });
       const result = await response.json();
       if (result.success) {
+        articleFormContext = null;
         await loadAllData();
         articleFormModals[level]?.hide();
       } else {
@@ -5894,6 +6054,30 @@ const cascadeArticleDelete = (level, itemId) => {
 
 const confirmArticleDelete = async (level) => {
   if (!pendingArticleDelete || pendingArticleDelete.level !== level) {
+    return;
+  }
+
+  if (level === "articles") {
+    try {
+      const response = await fetch("?handler=DeleteArticle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          RequestVerificationToken: getAntiforgeryToken(),
+        },
+        body: JSON.stringify({ id: pendingArticleDelete.itemId }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "Erreur lors de la suppression.");
+      }
+      pendingArticleDelete = null;
+      await loadAllData();
+      articleDeleteModals[level]?.hide();
+      showToast("Article supprimé.", "success");
+    } catch (error) {
+      showToast(`Erreur: ${error.message}`, "danger");
+    }
     return;
   }
 
@@ -7283,12 +7467,18 @@ const buildTreeDetails = (node, context) => {
     case "groupeOrgane":
       return {
         "Nb familles": countNodesByType(node.children, "familleOrgane"),
-        "Nb sous-familles": countNodesByType(node.children, "sousFamilleOrgane"),
+        "Nb sous-familles": countNodesByType(
+          node.children,
+          "sousFamilleOrgane",
+        ),
         "Nb organes": countNodesByType(node.children, "organe"),
       };
     case "familleOrgane":
       return {
-        "Nb sous-familles": countNodesByType(node.children, "sousFamilleOrgane"),
+        "Nb sous-familles": countNodesByType(
+          node.children,
+          "sousFamilleOrgane",
+        ),
         "Nb organes": countNodesByType(node.children, "organe"),
       };
     case "sousFamilleOrgane":
@@ -7309,7 +7499,7 @@ const buildTreeDetails = (node, context) => {
       };
     case "article":
       return {
-        "R\u00e9f\u00e9rence": node.ref,
+        "R\u00e9f\u00e9rence": node.ref ?? node.reference,
         "Stock actuel": node.stockActuel,
         "Stock minimum": node.stockMinimum,
         "Utilis\u00e9 sur":
@@ -7976,6 +8166,59 @@ const updateTreeDetails = (node) => {
     description.innerHTML = `<span class="${stockClass}"><i class="fa-solid fa-circle"></i> ${stockLabel}</span>`;
 
     listElement.append(term, description);
+  }
+
+  // If the selected node is a sous-famille d'articles, append the list
+  // of matching articles at the bottom of the details panel.
+  try {
+    const nodeType = node.dataset.type ?? "";
+    if (nodeType === "sousFamilleArticle") {
+      const compositeId = node.dataset.id ?? "";
+      const parts = compositeId.split("-");
+      const organeId = parts.length > 1 ? parts[1] : null;
+      const sousId = node.dataset.code || (parts.length > 4 ? parts[4] : null);
+
+      if (sousId) {
+        const matched = (articles || []).filter((a) => {
+          const sameSous = (a.sousFamilleId ?? a.sousFamilleId) === sousId;
+          const linkedToOrgane = Array.isArray(a.organeLinks)
+            ? a.organeLinks.some((l) => l.organeId === organeId)
+            : false;
+          return sameSous && linkedToOrgane;
+        });
+
+        if (matched.length) {
+          const termArt = document.createElement("dt");
+          termArt.className = "col-sm-5";
+          termArt.textContent = "Articles";
+
+          const descriptionArt = document.createElement("dd");
+          descriptionArt.className = "col-sm-7";
+
+          const list = document.createElement("ul");
+          list.className = "list-unstyled mb-0";
+
+          matched.forEach((a) => {
+            const li = document.createElement("li");
+            const name = a.nom || a.designation || "(sans nom)";
+            const code = a.code
+              ? ` <small class="text-muted">(${a.code})</small>`
+              : "";
+            const badge = renderStockStatusBadge(a.statutStock ?? "OK");
+            li.innerHTML = `<div class="d-flex justify-content-between align-items-start"><div>${name}${code}</div><div>${badge}</div></div>`;
+            list.appendChild(li);
+          });
+
+          descriptionArt.appendChild(list);
+          listElement.append(termArt, descriptionArt);
+        }
+      }
+    }
+  } catch (e) {
+    console.error(
+      "Erreur lors de l'affichage des articles dans le détail :",
+      e,
+    );
   }
 };
 
@@ -8697,7 +8940,9 @@ document.addEventListener("click", (event) => {
         familleEquip: "familles",
         sousFamilleEquip: "sousfamilles",
       };
-      deleteLevel = normalizeEquipLevel(nodeTypeToLevel[nodeType] ?? deleteLevel);
+      deleteLevel = normalizeEquipLevel(
+        nodeTypeToLevel[nodeType] ?? deleteLevel,
+      );
       itemId = selectedTreeNode.dataset.id ?? itemId;
     }
 
@@ -12736,7 +12981,9 @@ async function confirmQuickCreate() {
         : "article";
 
   if (cfg.classificationLevel === "familles") {
-    const modalGroupSelect = document.getElementById("quick-create-group-select");
+    const modalGroupSelect = document.getElementById(
+      "quick-create-group-select",
+    );
     const groupeId = modalGroupSelect?.value?.trim();
     if (!groupeId) {
       showToast(
@@ -12748,7 +12995,9 @@ async function confirmQuickCreate() {
   }
 
   if (cfg.classificationLevel === "sousfamilles") {
-    const modalFamilySelect = document.getElementById("quick-create-family-select");
+    const modalFamilySelect = document.getElementById(
+      "quick-create-family-select",
+    );
     const familleId = modalFamilySelect?.value?.trim();
     if (!familleId) {
       showToast(
@@ -12769,12 +13018,16 @@ async function confirmQuickCreate() {
   const values = { code: qcCodeEl.value, nom };
 
   if (cfg.classificationLevel === "familles") {
-    const modalGroupSelect = document.getElementById("quick-create-group-select");
+    const modalGroupSelect = document.getElementById(
+      "quick-create-group-select",
+    );
     values.groupeId = modalGroupSelect?.value ?? "";
   }
 
   if (cfg.classificationLevel === "sousfamilles") {
-    const modalFamilySelect = document.getElementById("quick-create-family-select");
+    const modalFamilySelect = document.getElementById(
+      "quick-create-family-select",
+    );
     values.familleId = modalFamilySelect?.value ?? "";
     const familles =
       cfg.classificationDomain === "equip"

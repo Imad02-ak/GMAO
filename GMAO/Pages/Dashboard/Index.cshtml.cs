@@ -131,6 +131,67 @@ public class IndexModel : PageModel
             })
             .ToListAsync();
 
+        var groupesArticles = await _db.GroupesArticles.AsNoTracking()
+            .OrderBy(g => g.Nom)
+            .Select(g => new
+            {
+                id = g.Id,
+                code = g.Code,
+                nom = g.Nom,
+                designation = g.Description
+            })
+            .ToListAsync();
+
+        var famillesArticles = await _db.FamillesArticles.AsNoTracking()
+            .OrderBy(f => f.Nom)
+            .Select(f => new
+            {
+                id = f.Id,
+                code = f.Code,
+                nom = f.Nom,
+                designation = f.Description,
+                groupeId = f.GroupeId,
+                groupeNom = _db.GroupesArticles.Where(g => g.Id == f.GroupeId).Select(g => g.Nom).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var sousFamillesArticles = await _db.SousFamillesArticles.AsNoTracking()
+            .OrderBy(sf => sf.Nom)
+            .Select(sf => new
+            {
+                id = sf.Id,
+                code = sf.Code,
+                nom = sf.Nom,
+                designation = sf.Description,
+                groupeId = sf.GroupeId,
+                groupeNom = _db.GroupesArticles.Where(g => g.Id == sf.GroupeId).Select(g => g.Nom).FirstOrDefault(),
+                familleId = sf.FamilleId,
+                familleNom = _db.FamillesArticles.Where(f => f.Id == sf.FamilleId).Select(f => f.Nom).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var articles = await _db.Articles.AsNoTracking()
+            .Where(article => article.EntrepriseId == resolvedEntrepriseId)
+            .OrderBy(article => article.Designation)
+            .Select(article => new
+            {
+                id = article.Id,
+                code = article.Code,
+                nom = string.IsNullOrWhiteSpace(article.Nom) ? article.Designation : article.Nom,
+                designation = article.Designation,
+                referenceInterne = article.ReferenceInterne,
+                stockActuel = article.StockActuel,
+                stockMinimum = article.StockMinimum,
+                groupeId = article.GroupeId,
+                groupeNom = article.GroupeNom ?? _db.GroupesArticles.Where(g => g.Id == article.GroupeId).Select(g => g.Nom).FirstOrDefault(),
+                familleId = article.FamilleId,
+                familleNom = article.FamilleNom ?? _db.FamillesArticles.Where(f => f.Id == article.FamilleId).Select(f => f.Nom).FirstOrDefault(),
+                sousFamilleId = article.SousFamilleId,
+                sousFamilleNom = article.SousFamilleNom ?? _db.SousFamillesArticles.Where(sf => sf.Id == article.SousFamilleId).Select(sf => sf.Nom).FirstOrDefault(),
+                equipementId = article.EquipementId
+            })
+            .ToListAsync();
+
         object BuildEquipmentNode(dynamic eq) => new
         {
             type = "equipement",
@@ -150,6 +211,96 @@ public class IndexModel : PageModel
             localisation = eq.localisation,
             children = Array.Empty<object>()
         };
+
+        object BuildArticleNode(dynamic article) => new
+        {
+            type = "article",
+            id = article.id,
+            code = article.code,
+            reference = article.referenceInterne ?? article.code,
+            nom = article.nom,
+            designation = article.designation,
+            stockActuel = article.stockActuel ?? 0m,
+            stockMinimum = article.stockMinimum ?? 0m,
+            groupeId = article.groupeId,
+            groupeNom = article.groupeNom,
+            familleId = article.familleId,
+            familleNom = article.familleNom,
+            sousFamilleId = article.sousFamilleId,
+            sousFamilleNom = article.sousFamilleNom,
+            equipementId = article.equipementId,
+            children = Array.Empty<object>()
+        };
+
+        object BuildSousFamilleArticleNode(dynamic sousFamille, dynamic famille, dynamic groupe)
+        {
+            var articleChildren = articles
+                .Where(article => article.sousFamilleId == sousFamille.id)
+                .Select(article => BuildArticleNode(article))
+                .ToList();
+
+            return new
+            {
+                type = "sousFamilleArticle",
+                id = sousFamille.id,
+                code = sousFamille.code,
+                nom = sousFamille.nom,
+                designation = sousFamille.designation,
+                groupeId = sousFamille.groupeId,
+                groupeNom = groupe.nom,
+                familleId = sousFamille.familleId,
+                familleNom = famille.nom,
+                children = articleChildren
+            };
+        }
+
+        object BuildFamilleArticleNode(dynamic famille, dynamic groupe)
+        {
+            var subFamilyChildren = sousFamillesArticles
+                .Where(sousFamille => sousFamille.familleId == famille.id)
+                .Select(sousFamille => BuildSousFamilleArticleNode(sousFamille, famille, groupe))
+                .ToList();
+
+            var directArticleChildren = articles
+                .Where(article => article.familleId == famille.id && string.IsNullOrWhiteSpace(article.sousFamilleId))
+                .Select(article => BuildArticleNode(article))
+                .ToList();
+
+            return new
+            {
+                type = "familleArticle",
+                id = famille.id,
+                code = famille.code,
+                nom = famille.nom,
+                designation = famille.designation,
+                groupeId = famille.groupeId,
+                groupeNom = groupe.nom,
+                children = subFamilyChildren.Concat(directArticleChildren).ToList()
+            };
+        }
+
+        object BuildGroupeArticleNode(dynamic groupe)
+        {
+            var familyChildren = famillesArticles
+                .Where(famille => famille.groupeId == groupe.id)
+                .Select(famille => BuildFamilleArticleNode(famille, groupe))
+                .ToList();
+
+            var directArticleChildren = articles
+                .Where(article => article.groupeId == groupe.id && string.IsNullOrWhiteSpace(article.familleId))
+                .Select(article => BuildArticleNode(article))
+                .ToList();
+
+            return new
+            {
+                type = "groupeArticle",
+                id = groupe.id,
+                code = groupe.code,
+                nom = groupe.nom,
+                designation = groupe.designation,
+                children = familyChildren.Concat(directArticleChildren).ToList()
+            };
+        }
 
         object BuildSousFamilleNode(dynamic sousFamille, dynamic famille, dynamic groupe)
         {
@@ -226,6 +377,9 @@ public class IndexModel : PageModel
                 equipements
                     .Where(eq => string.IsNullOrWhiteSpace(eq.groupeId))
                     .Select(eq => BuildEquipmentNode(eq)))
+            .Concat(
+                groupesArticles
+                    .Select(groupe => BuildGroupeArticleNode(groupe)))
             .ToList();
 
         return new JsonResult(tree) { StatusCode = 200 };
@@ -804,7 +958,7 @@ public class IndexModel : PageModel
         if (request is null || string.IsNullOrWhiteSpace(request.Nom))
             return ErrorResult("Requ�te invalide.");
 
-        GroupeEquipement groupe = null;
+        GroupeEquipement? groupe = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             groupe = await _db.GroupesEquipements.FirstOrDefaultAsync(g => g.Id == request.Id);
@@ -833,7 +987,7 @@ public class IndexModel : PageModel
             if (grp is null) return ErrorResult("Groupe parent invalide.");
         }
 
-        FamilleEquipement fam = null;
+        FamilleEquipement? fam = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             fam = await _db.FamillesEquipements.FirstOrDefaultAsync(f => f.Id == request.Id);
@@ -863,7 +1017,7 @@ public class IndexModel : PageModel
             if (fam is null) return ErrorResult("Famille parent invalide.");
         }
 
-        SousFamilleEquipement sf = null;
+        SousFamilleEquipement? sf = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             sf = await _db.SousFamillesEquipements.FirstOrDefaultAsync(s => s.Id == request.Id);
@@ -887,7 +1041,7 @@ public class IndexModel : PageModel
     public async Task<JsonResult> OnPostSaveGroupeOrganeAsync([FromBody] GroupeOrganeRequest request)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requ�te invalide.");
-        GroupeOrgane g = null;
+        GroupeOrgane? g = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             g = await _db.GroupesOrganes.FirstOrDefaultAsync(x => x.Id == request.Id);
@@ -907,7 +1061,7 @@ public class IndexModel : PageModel
         if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requ�te invalide.");
         if (!string.IsNullOrWhiteSpace(request.GroupeId) && await _db.GroupesOrganes.FindAsync(request.GroupeId) is null)
             return ErrorResult("Groupe parent invalide.");
-        FamilleOrgane f = null;
+        FamilleOrgane? f = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             f = await _db.FamillesOrganes.FirstOrDefaultAsync(x => x.Id == request.Id);
@@ -928,7 +1082,7 @@ public class IndexModel : PageModel
         if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requ�te invalide.");
         if (!string.IsNullOrWhiteSpace(request.FamilleId) && await _db.FamillesOrganes.FindAsync(request.FamilleId) is null)
             return ErrorResult("Famille parent invalide.");
-        SousFamilleOrgane s = null;
+        SousFamilleOrgane? s = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             s = await _db.SousFamillesOrganes.FirstOrDefaultAsync(x => x.Id == request.Id);
@@ -949,7 +1103,7 @@ public class IndexModel : PageModel
     public async Task<JsonResult> OnPostSaveGroupeArticleAsync([FromBody] GroupeArticleRequest request)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requ�te invalide.");
-        GroupeArticle g = null;
+        GroupeArticle? g = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             g = await _db.GroupesArticles.FirstOrDefaultAsync(x => x.Id == request.Id);
@@ -969,7 +1123,7 @@ public class IndexModel : PageModel
         if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requ�te invalide.");
         if (!string.IsNullOrWhiteSpace(request.GroupeId) && await _db.GroupesArticles.FindAsync(request.GroupeId) is null)
             return ErrorResult("Groupe parent invalide.");
-        FamilleArticle f = null;
+        FamilleArticle? f = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             f = await _db.FamillesArticles.FirstOrDefaultAsync(x => x.Id == request.Id);
@@ -990,7 +1144,7 @@ public class IndexModel : PageModel
         if (request is null || string.IsNullOrWhiteSpace(request.Nom)) return ErrorResult("Requ�te invalide.");
         if (!string.IsNullOrWhiteSpace(request.FamilleId) && await _db.FamillesArticles.FindAsync(request.FamilleId) is null)
             return ErrorResult("Famille parent invalide.");
-        SousFamilleArticle s = null;
+        SousFamilleArticle? s = null;
         if (!string.IsNullOrWhiteSpace(request.Id))
         {
             s = await _db.SousFamillesArticles.FirstOrDefaultAsync(x => x.Id == request.Id);
@@ -1741,19 +1895,41 @@ public class IndexModel : PageModel
             return ErrorResult("Suppression invalide.");
         }
 
-        var equipement = await _db.Equipements.FirstOrDefaultAsync(eq => eq.Id == request.Id
-            && _db.Services.Any(service => service.Id == eq.ServiceId
-                && _db.Departements.Any(dep => dep.Id == service.DepartementId
-                    && _db.Divisions.Any(div => div.Id == dep.DivisionId
-                        && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == entrepriseId)))));
-        if (equipement is null)
+        try
         {
-            return ErrorResult("\u00c9quipement introuvable.");
-        }
+            var equipement = await _db.Equipements.FirstOrDefaultAsync(eq => eq.Id == request.Id
+                && _db.Services.Any(service => service.Id == eq.ServiceId
+                    && _db.Departements.Any(dep => dep.Id == service.DepartementId
+                        && _db.Divisions.Any(div => div.Id == dep.DivisionId
+                            && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == entrepriseId)))));
+            if (equipement is null)
+            {
+                return ErrorResult("\u00c9quipement introuvable.");
+            }
 
-        _db.Equipements.Remove(equipement);
-        await _db.SaveChangesAsync();
-        return SuccessResult();
+            // Supprimer d'abord les organes liés
+            var organesLies = await _db.Organes.Where(o => o.EquipementId == equipement.Id).ToListAsync();
+            if (organesLies.Count > 0)
+            {
+                _db.Organes.RemoveRange(organesLies);
+            }
+
+            // Supprimer les articles liés (sous-ensembles)
+            var articlesLies = await _db.Articles.Where(a => a.EquipementId == equipement.Id).ToListAsync();
+            if (articlesLies.Count > 0)
+            {
+                _db.Articles.RemoveRange(articlesLies);
+            }
+
+            _db.Equipements.Remove(equipement);
+            await _db.SaveChangesAsync();
+            return SuccessResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur suppression equipement {EquipementId}", request.Id);
+            return ErrorResult("Suppression impossible : des éléments liés bloquent l'opération.");
+        }
     }
 
     public async Task<JsonResult> OnPostDeleteArticleAsync([FromBody] DeleteRequest request)
@@ -1764,15 +1940,52 @@ public class IndexModel : PageModel
             return ErrorResult("Suppression invalide.");
         }
 
-        var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == request.Id && a.EntrepriseId == entrepriseId);
-        if (article is null)
+        try
         {
-            return ErrorResult("Article introuvable.");
-        }
+            var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == request.Id && a.EntrepriseId == entrepriseId);
+            if (article is null)
+            {
+                return ErrorResult("Article introuvable.");
+            }
 
-        _db.Articles.Remove(article);
-        await _db.SaveChangesAsync();
-        return SuccessResult();
+            // Supprimer les organes liés (SousEnsembleId)
+            var organesLies = await _db.Organes.Where(o => o.SousEnsembleId == article.Id).ToListAsync();
+            if (organesLies.Count > 0)
+            {
+                _db.Organes.RemoveRange(organesLies);
+            }
+
+            // Détacher les organes qui référencent cet article via OrganeLinksJson
+            var articlesWithLink = await _db.Articles
+                .Where(a => a.Id != article.Id && a.OrganeLinksJson != null && a.OrganeLinksJson != "")
+                .ToListAsync();
+
+            _db.Articles.Remove(article);
+            await _db.SaveChangesAsync();
+
+            // Mettre à jour les articles qui avaient un lien vers cet article (via OrganeLinksJson)
+            foreach (var a in articlesWithLink)
+            {
+                try
+                {
+                    var links = JsonSerializer.Deserialize<List<ArticleOrganeLink>>(a.OrganeLinksJson!);
+                    if (links is not null)
+                    {
+                        links.RemoveAll(l => l.OrganeId == article.Id);
+                        a.OrganeLinksJson = links.Count == 0 ? null : JsonSerializer.Serialize(links);
+                    }
+                }
+                catch { /* ignore parse errors */ }
+            }
+            await _db.SaveChangesAsync();
+
+            return SuccessResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur suppression article {ArticleId}", request.Id);
+            return ErrorResult("Suppression impossible : des éléments liés bloquent l'opération.");
+        }
     }
 
     public async Task<JsonResult> OnPostDeleteOrganeAsync([FromBody] DeleteRequest request)
@@ -1783,20 +1996,47 @@ public class IndexModel : PageModel
             return ErrorResult("Suppression invalide.");
         }
 
-        var organe = await _db.Organes.FirstOrDefaultAsync(org => org.Id == request.Id
-            && _db.Equipements.Any(eq => eq.Id == org.EquipementId
-                && _db.Services.Any(service => service.Id == eq.ServiceId
-                    && _db.Departements.Any(dep => dep.Id == service.DepartementId
-                        && _db.Divisions.Any(div => div.Id == dep.DivisionId
-                            && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == entrepriseId))))));
-        if (organe is null)
+        try
         {
-            return ErrorResult("Organe introuvable.");
-        }
+            var organe = await _db.Organes.FirstOrDefaultAsync(org => org.Id == request.Id
+                && _db.Equipements.Any(eq => eq.Id == org.EquipementId
+                    && _db.Services.Any(service => service.Id == eq.ServiceId
+                        && _db.Departements.Any(dep => dep.Id == service.DepartementId
+                            && _db.Divisions.Any(div => div.Id == dep.DivisionId
+                                && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == entrepriseId))))));
+            if (organe is null)
+            {
+                return ErrorResult("Organe introuvable.");
+            }
 
-        _db.Organes.Remove(organe);
-        await _db.SaveChangesAsync();
-        return SuccessResult();
+            // Mettre à jour les articles qui référencent cet organe via OrganeLinksJson
+            var articlesWithLink = await _db.Articles
+                .Where(a => a.OrganeLinksJson != null && a.OrganeLinksJson != "")
+                .ToListAsync();
+
+            foreach (var article in articlesWithLink)
+            {
+                try
+                {
+                    var links = JsonSerializer.Deserialize<List<ArticleOrganeLink>>(article.OrganeLinksJson!);
+                    if (links is not null)
+                    {
+                        links.RemoveAll(l => l.OrganeId == organe.Id);
+                        article.OrganeLinksJson = links.Count == 0 ? null : JsonSerializer.Serialize(links);
+                    }
+                }
+                catch { /* ignore parse errors */ }
+            }
+
+            _db.Organes.Remove(organe);
+            await _db.SaveChangesAsync();
+            return SuccessResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erreur suppression organe {OrganeId}", request.Id);
+            return ErrorResult("Suppression impossible : des éléments liés bloquent l'opération.");
+        }
     }
 
     private async Task ApplyEquipementClassificationAsync(Equipement equipement)
@@ -1904,8 +2144,7 @@ public class IndexModel : PageModel
 
     private static bool ValidateArticle(ArticleRequest request, out string error)
     {
-        if (string.IsNullOrWhiteSpace(request.Designation)
-            || string.IsNullOrWhiteSpace(request.UniteMesure))
+        if (string.IsNullOrWhiteSpace(request.Designation))
         {
             error = "Veuillez remplir tous les champs obligatoires de l'article.";
             return false;

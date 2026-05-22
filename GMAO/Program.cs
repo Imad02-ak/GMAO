@@ -87,20 +87,24 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
         .GroupBy(o => o.EquipementId)
         .ToDictionary(g => g.Key, g => g.ToList());
     var articlesByOrgane = await db.Articles.AsNoTracking()
-        .Where(article => article.OrganeLinksJson != null)
+        .Where(article => article.EntrepriseId == entrepriseId)
         .Select(article => new
         {
             article.Id,
             article.Code,
             article.Nom,
             article.Designation,
+            article.ReferenceInterne,
             article.OrganeLinksJson,
             article.GroupeId,
             article.GroupeNom,
             article.FamilleId,
             article.FamilleNom,
             article.SousFamilleId,
-            article.SousFamilleNom
+            article.SousFamilleNom,
+            article.StockActuel,
+            article.StockMinimum,
+            article.EquipementId
         })
         .ToListAsync();
     var sousEnsemblesByEquipement = sousEnsembles
@@ -412,15 +416,26 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
 
     List<object> BuildArticleHierarchyForOrgane(string organeId)
     {
-        var related = articlesByOrgane
-            .Where(article => !string.IsNullOrWhiteSpace(article.OrganeLinksJson)
-                && JsonSerializer.Deserialize<List<ArticleOrganeLink>>(article.OrganeLinksJson!)
-                    ?.Any(link => link.OrganeId == organeId) == true)
-            .ToList();
-
-        if (related.Count == 0)
+        // Build a set of article ids explicitly linked to this organe.
+        var linkedArticleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var article in articlesByOrgane)
         {
-            return new List<object>();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(article.OrganeLinksJson))
+                    continue;
+
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var links = JsonSerializer.Deserialize<List<ArticleOrganeLink>>(article.OrganeLinksJson!, opts);
+                if (links?.Any(l => !string.IsNullOrWhiteSpace(l?.OrganeId) && l.OrganeId == organeId) == true)
+                {
+                    linkedArticleIds.Add(article.Id);
+                }
+            }
+            catch
+            {
+                // ignore malformed organe links
+            }
         }
 
         var assigned = new HashSet<string>();
@@ -434,11 +449,12 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
                 var sousNodes = new List<object>();
                 foreach (var sous in refSousFamillesArticles.Where(sf => sf.FamilleId == famille.Id))
                 {
-                    var articleChildren = related
+                    var articleChildren = articlesByOrgane
                         .Where(article => !assigned.Contains(article.Id)
                             && RefMatches(article.GroupeId, article.GroupeNom, groupe.Id, groupe.Nom)
                             && RefMatches(article.FamilleId, article.FamilleNom, famille.Id, famille.Nom)
-                            && RefMatches(article.SousFamilleId, article.SousFamilleNom, sous.Id, sous.Nom))
+                            && RefMatches(article.SousFamilleId, article.SousFamilleNom, sous.Id, sous.Nom)
+                            && (linkedArticleIds.Contains(article.Id) || (!string.IsNullOrWhiteSpace(article.SousFamilleId) && article.SousFamilleId == sous.Id)))
                         .Select(article =>
                         {
                             assigned.Add(article.Id);
@@ -448,6 +464,9 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
                                 type = "article",
                                 nom = string.IsNullOrWhiteSpace(article.Nom) ? article.Designation : article.Nom,
                                 code = article.Code,
+                                reference = article.ReferenceInterne,
+                                stockActuel = article.StockActuel,
+                                stockMinimum = article.StockMinimum,
                                 icon = "box"
                             };
                         })
@@ -483,7 +502,9 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
             });
         }
 
-        var unassignedArticles = related.Where(article => !assigned.Contains(article.Id)).ToList();
+        var unassignedArticles = articlesByOrgane
+            .Where(article => linkedArticleIds.Contains(article.Id) && !assigned.Contains(article.Id))
+            .ToList();
         if (unassignedArticles.Count > 0)
         {
             nodes.Add(new
@@ -498,6 +519,9 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
                     type = "article",
                     nom = string.IsNullOrWhiteSpace(article.Nom) ? article.Designation : article.Nom,
                     code = article.Code,
+                    reference = article.ReferenceInterne,
+                    stockActuel = article.StockActuel,
+                    stockMinimum = article.StockMinimum,
                     icon = "box"
                 }).ToList()
             });
@@ -505,7 +529,6 @@ app.MapGet("/api/tree/{entrepriseId}", async (string entrepriseId, GmaoDbContext
 
         return nodes;
     }
-
 
     var uniteNodes = unites.Select(unite => new
     {
