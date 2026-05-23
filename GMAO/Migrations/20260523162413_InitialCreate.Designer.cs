@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GMAO.Migrations
 {
     [DbContext(typeof(GmaoDbContext))]
-    [Migration("20260519132152_AddGroupsFamiliesSubfamilies")]
-    partial class AddGroupsFamiliesSubfamilies
+    [Migration("20260523162413_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -92,6 +92,7 @@ namespace GMAO.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("QteReapprovisionnement")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("ReferenceFabricant")

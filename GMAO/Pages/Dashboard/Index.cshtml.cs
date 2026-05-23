@@ -104,8 +104,8 @@ public class IndexModel : PageModel
             .ToListAsync();
 
         var equipements = await _db.Equipements.AsNoTracking()
-            .Where(eq => eq.ServiceId != null
-                && _db.Services.Any(service => service.Id == eq.ServiceId
+            .Where(eq => string.IsNullOrWhiteSpace(eq.ServiceId)
+                || _db.Services.Any(service => service.Id == eq.ServiceId
                     && _db.Departements.Any(dep => dep.Id == service.DepartementId
                         && _db.Divisions.Any(div => div.Id == dep.DivisionId
                             && _db.Unites.Any(unite => unite.Id == div.UniteId && unite.EntrepriseId == resolvedEntrepriseId)))))
@@ -587,8 +587,8 @@ public class IndexModel : PageModel
         }
 
         var rawData = await _db.Organes.AsNoTracking()
-            .Where(org => org.EquipementId != null
-                && _db.Equipements.Any(eq => eq.Id == org.EquipementId
+            .Where(org => string.IsNullOrWhiteSpace(org.EquipementId)
+                || _db.Equipements.Any(eq => eq.Id == org.EquipementId
                     && _db.Services.Any(service => service.Id == eq.ServiceId
                         && _db.Departements.Any(dep => dep.Id == service.DepartementId
                             && _db.Divisions.Any(div => div.Id == dep.DivisionId
@@ -1968,7 +1968,7 @@ public class IndexModel : PageModel
             {
                 try
                 {
-                    var links = JsonSerializer.Deserialize<List<ArticleOrganeLink>>(a.OrganeLinksJson!);
+                    var links = JsonSerializer.Deserialize<List<ArticleOrganeLinkDto>>(a.OrganeLinksJson!);
                     if (links is not null)
                     {
                         links.RemoveAll(l => l.OrganeId == article.Id);
@@ -2018,7 +2018,7 @@ public class IndexModel : PageModel
             {
                 try
                 {
-                    var links = JsonSerializer.Deserialize<List<ArticleOrganeLink>>(article.OrganeLinksJson!);
+                    var links = JsonSerializer.Deserialize<List<ArticleOrganeLinkDto>>(article.OrganeLinksJson!);
                     if (links is not null)
                     {
                         links.RemoveAll(l => l.OrganeId == organe.Id);

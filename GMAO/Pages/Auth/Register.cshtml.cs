@@ -53,14 +53,14 @@ public class RegisterModel : PageModel
             return Page();
         }
 
-        var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+        var normalizedEmail = (Input.Email ?? string.Empty).Trim().ToLowerInvariant();
         if (await _db.UserAccounts.AsNoTracking().AnyAsync(user => user.Email == normalizedEmail))
         {
-            ModelState.AddModelError("Input.Email", "Cette adresse e-mail est déjà utilisée.");
+            ModelState.AddModelError("Input.Email", "Cette adresse e-mail est dï¿½jï¿½ utilisï¿½e.");
             return Page();
         }
 
-        var companyCodeInput = Input.CompanyCode.Trim();
+        var companyCodeInput = (Input.CompanyCode ?? string.Empty).Trim();
         Entreprise? entreprise;
         if (Input.CreateNewCompany)
         {
@@ -68,12 +68,12 @@ public class RegisterModel : PageModel
             entreprise = new Entreprise
             {
                 Code = CompanyCode,
-                Nom = Input.CompanyName.Trim(),
-                Wilaya = Input.Wilaya.Trim(),
-                Daira = Input.Daira.Trim(),
-                Commune = Input.Commune.Trim(),
+                Nom = (Input.CompanyName ?? string.Empty).Trim(),
+                Wilaya = (Input.Wilaya ?? string.Empty).Trim(),
+                Daira = (Input.Daira ?? string.Empty).Trim(),
+                Commune = (Input.Commune ?? string.Empty).Trim(),
                 DateCreation = Input.CompanyCreationDate,
-                Telephone = Input.PhoneNumber.Trim()
+                Telephone = (Input.PhoneNumber ?? string.Empty).Trim()
             };
 
             _db.Entreprises.Add(entreprise);
@@ -83,15 +83,15 @@ public class RegisterModel : PageModel
             entreprise = await _db.Entreprises.SingleOrDefaultAsync(e => e.Code == companyCodeInput);
             if (entreprise is null)
             {
-                ModelState.AddModelError("Input.CompanyCode", "Aucune entreprise trouvée pour ce code.");
+                ModelState.AddModelError("Input.CompanyCode", "Aucune entreprise trouvï¿½e pour ce code.");
                 return Page();
             }
         }
 
         var userAccount = new UserAccount
         {
-            FirstName = Input.FirstName.Trim(),
-            LastName = Input.LastName.Trim(),
+            FirstName = (Input.FirstName ?? string.Empty).Trim(),
+            LastName = (Input.LastName ?? string.Empty).Trim(),
             BirthDate = Input.BirthDate,
             Email = normalizedEmail,
             EntrepriseId = entreprise.Id
@@ -123,8 +123,8 @@ public class RegisterModel : PageModel
 
     public sealed class InputModel
     {
-        [Required(ErrorMessage = "Le prénom est obligatoire.")]
-        [Display(Name = "Prénom")]
+        [Required(ErrorMessage = "Le prï¿½nom est obligatoire.")]
+        [Display(Name = "Prï¿½nom")]
         public string FirstName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Le nom de famille est obligatoire.")]
@@ -152,7 +152,7 @@ public class RegisterModel : PageModel
         [Compare("Password", ErrorMessage = "Les mots de passe ne correspondent pas.")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
-        [Display(Name = "Créer une nouvelle entreprise")]
+        [Display(Name = "Crï¿½er une nouvelle entreprise")]
         public bool CreateNewCompany { get; set; }
 
         [Required(ErrorMessage = "Le code entreprise est obligatoire.")]
@@ -167,22 +167,22 @@ public class RegisterModel : PageModel
         [Display(Name = "Wilaya")]
         public string Wilaya { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "La daïra est obligatoire.")]
-        [Display(Name = "Daïra")]
+        [Required(ErrorMessage = "La daï¿½ra est obligatoire.")]
+        [Display(Name = "Daï¿½ra")]
         public string Daira { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "La commune est obligatoire.")]
         [Display(Name = "Commune")]
         public string Commune { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "La date de création est obligatoire.")]
+        [Required(ErrorMessage = "La date de crï¿½ation est obligatoire.")]
         [DataType(DataType.Date)]
-        [Display(Name = "Date de création de l'entreprise")]
+        [Display(Name = "Date de crï¿½ation de l'entreprise")]
         public DateTime? CompanyCreationDate { get; set; }
 
-        [Required(ErrorMessage = "Le numéro de téléphone est obligatoire.")]
-        [Phone(ErrorMessage = "Veuillez saisir un numéro de téléphone valide.")]
-        [Display(Name = "Numéro de téléphone")]
+        [Required(ErrorMessage = "Le numï¿½ro de tï¿½lï¿½phone est obligatoire.")]
+        [Phone(ErrorMessage = "Veuillez saisir un numï¿½ro de tï¿½lï¿½phone valide.")]
+        [Display(Name = "Numï¿½ro de tï¿½lï¿½phone")]
         public string PhoneNumber { get; set; } = string.Empty;
     }
 }

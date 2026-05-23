@@ -17,6 +17,9 @@ const crudDeleteBody = document.getElementById("crud-delete-body");
 const crudDeleteConfirm = document.getElementById("crud-delete-confirm");
 const ENTREPRISE_ID = document.body.dataset.entrepriseId;
 
+// Fallback global `company` si non injecté par le serveur (évite ReferenceError au chargement)
+const company = window.company || { name: "", code: "" };
+
 const bootstrapAvailable = typeof bootstrap !== "undefined";
 const crudFormModal =
   crudFormModalElement && bootstrapAvailable
@@ -197,6 +200,63 @@ const sanitizeEquipClassification = (values) => {
   return sanitized;
 };
 
+const sanitizeArticleClassification = (values) => {
+  const sanitized = { ...values };
+  let groupeId = sanitized.groupeId?.trim();
+  let familleId = sanitized.familleId?.trim();
+  let sousFamilleId = sanitized.sousFamilleId?.trim();
+  const placeholder = ["", "-- Non classifié --", "Sélectionner"];
+
+  // Nettoyer les valeurs de placeholder
+  if (!groupeId || placeholder.includes(groupeId)) {
+    sanitized.groupeId = undefined;
+    sanitized.groupeNom = undefined;
+    sanitized.familleId = undefined;
+    sanitized.familleNom = undefined;
+    sanitized.sousFamilleId = undefined;
+    sanitized.sousFamilleNom = undefined;
+    return sanitized;
+  }
+
+  // Valider cascade famille → groupe
+  if (familleId && !placeholder.includes(familleId)) {
+    const famille = famillesArticles.find((f) => f.id === familleId);
+    if (!famille || famille.groupeId !== groupeId) {
+      familleId = undefined;
+      sousFamilleId = undefined;
+    }
+  } else if (!familleId || placeholder.includes(familleId)) {
+    familleId = undefined;
+    sousFamilleId = undefined;
+  }
+
+  // Valider cascade sous-famille → famille
+  if (sousFamilleId && !placeholder.includes(sousFamilleId) && familleId) {
+    const sf = sousFamillesArticles.find((s) => s.id === sousFamilleId);
+    if (!sf || sf.familleId !== familleId) {
+      sousFamilleId = undefined;
+    }
+  } else if (!familleId) {
+    sousFamilleId = undefined;
+  }
+
+  const groupe = groupesArticles.find((g) => g.id === groupeId);
+  const famille = familleId
+    ? famillesArticles.find((f) => f.id === familleId)
+    : null;
+  const sousFamille = sousFamilleId
+    ? sousFamillesArticles.find((s) => s.id === sousFamilleId)
+    : null;
+
+  sanitized.groupeId = groupeId;
+  sanitized.groupeNom = groupe?.nom?.trim() || undefined;
+  sanitized.familleId = familleId;
+  sanitized.familleNom = famille?.nom?.trim() || undefined;
+  sanitized.sousFamilleId = sousFamilleId;
+  sanitized.sousFamilleNom = sousFamille?.nom?.trim() || undefined;
+  return sanitized;
+};
+
 const buildEquipementPayload = (values, context) => {
   const classified = sanitizeEquipClassification(values);
   return {
@@ -230,10 +290,58 @@ const buildEquipementPayload = (values, context) => {
 };
 
 const buildArticlePayload = (values, context) => {
+  const classified = sanitizeArticleClassification(values);
   const stockActuel = toOptionalNumber(values.stockActuel);
   const stockMinimum = toOptionalNumber(values.stockMinimum);
   const stockCritique = toOptionalNumber(values.stockCritique);
   const prixUnitaire = toOptionalNumber(values.prixUnitaire);
+
+ console.log(
+  "ARTICLE ORGANE LINKS BEFORE SAVE",
+  articleOrganeLinks
+);
+
+if (
+  articleOrganeLinks.length === 0 &&
+  values.organeId
+) {
+  const selectedOrgane = organes.find(
+    (o) => String(o.id) === String(values.organeId)
+  );
+
+  if (selectedOrgane) {
+    const equipement = equipements.find(
+      (eq) =>
+        String(eq.id) ===
+        String(
+          selectedOrgane.equipementId ||
+          selectedOrgane.parentId
+        )
+    );
+
+    articleOrganeLinks = [
+      {
+        organeId: selectedOrgane.id,
+        organeNom:
+          selectedOrgane.nom ||
+          selectedOrgane.name ||
+          "",
+
+        equipementNom:
+          equipement?.nom ||
+          equipement?.name ||
+          "",
+
+        qteUtilisee: 1,
+      },
+    ];
+  }
+}
+
+console.log(
+  "FINAL ARTICLE ORGANE LINKS",
+  articleOrganeLinks
+);
 
   return {
     id: context?.mode === "edit" ? context.itemId : undefined,
@@ -260,20 +368,23 @@ const buildArticlePayload = (values, context) => {
     photo: values.photo || undefined,
     documents: Array.isArray(values.documents) ? values.documents : undefined,
     notes: values.notes?.trim() || undefined,
-    groupeId: values.groupeId?.trim() || undefined,
-    groupeNom: values.groupeNom?.trim() || undefined,
-    familleId: values.familleId?.trim() || undefined,
-    familleNom: values.familleNom?.trim() || undefined,
-    sousFamilleId: values.sousFamilleId?.trim() || undefined,
-    sousFamilleNom: values.sousFamilleNom?.trim() || undefined,
-    organeLinks: Array.isArray(values.organeLinks)
-      ? values.organeLinks.map((link) => ({
-          organeId: link.organeId?.trim() || undefined,
-          organeNom: link.organeNom?.trim() || undefined,
-          equipementNom: link.equipementNom?.trim() || undefined,
-          qteUtilisee: toOptionalNumber(link.qteUtilisee) ?? 1,
-        }))
-      : undefined,
+    groupeId: classified.groupeId,
+    groupeNom: classified.groupeNom,
+    familleId: classified.familleId,
+    familleNom: classified.familleNom,
+    sousFamilleId: classified.sousFamilleId,
+    sousFamilleNom: classified.sousFamilleNom,
+    organeLinksJson:
+      articleOrganeLinks.length > 0
+        ? JSON.stringify(
+            articleOrganeLinks.map((link) => ({
+              OrganeId: link.organeId,
+              OrganeNom: link.organeNom,
+              EquipementNom: link.equipementNom,
+              QteUtilisee: link.qteUtilisee ?? 1,
+            })),
+          )
+        : null,
     entrepriseId: ENTREPRISE_ID,
   };
 };
@@ -283,17 +394,74 @@ const normalizeTreeNodes = (nodes) => {
     return [];
   }
 
-  return nodes.map((node) => {
-    const normalized = {
-      ...node,
-      name: node.name ?? node.nom ?? "",
-      code: node.code ?? node.tag ?? node.code,
-    };
-    if (Array.isArray(node.children) && node.children.length) {
-      normalized.children = normalizeTreeNodes(node.children);
+  return nodes.map((node) => ({
+    ...node,
+    name: node.name ?? node.nom ?? "",
+    code: node.code ?? node.tag ?? node.code,
+
+    children: Array.isArray(node.children)
+      ? normalizeTreeNodes(node.children)
+      : [],
+  }));
+};
+
+const syncArticleOrganeLinks = (form) => {
+  if (!form) return;
+
+  const organeSelect =
+    form.querySelector('[name="organeId"]') ||
+    form.querySelector("#article-organe") ||
+    form.querySelector("[data-organe-select]");
+
+  if (!organeSelect) {
+    return;
+  }
+
+  organeSelect.onchange = () => {
+    const organeId = organeSelect.value;
+
+    if (!organeId) {
+      articleOrganeLinks = [];
+      return;
     }
-    return normalized;
-  });
+
+    const selectedOrgane = organes.find(
+      (o) => String(o.id) === String(organeId)
+    );
+
+    if (!selectedOrgane) {
+      articleOrganeLinks = [];
+      return;
+    }
+
+    const equipement = equipements.find(
+      (eq) =>
+        String(eq.id) ===
+        String(
+          selectedOrgane.equipementId ||
+          selectedOrgane.parentId
+        )
+    );
+
+    articleOrganeLinks = [
+      {
+        organeId: selectedOrgane.id,
+        organeNom:
+          selectedOrgane.nom ||
+          selectedOrgane.name ||
+          "",
+
+        equipementNom:
+          equipement?.nom ||
+          equipement?.name ||
+          "",
+
+        qteUtilisee: 1,
+      },
+    ];
+  };
+
+  organeSelect.onchange();
 };
 
 const parseJsonResponse = async (response, label) => {
@@ -527,6 +695,17 @@ async function loadAllData() {
 
 const createId = () => `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
+// English-named data placeholders (used by entityData getters)
+let sites = [];
+let departments = [];
+let workshops = [];
+let lines = [];
+let equipment = [];
+let subassemblies = [];
+let organs = [];
+let components = [];
+let spareParts = [];
+
 let unitesPrincipales = [];
 let divisions = [];
 let departements = [];
@@ -543,121 +722,6 @@ let groupesArticles = [];
 let famillesArticles = [];
 let sousFamillesArticles = [];
 let articles = []; // seeded after computeArticleStats() is defined
-let fournisseurs = [
-  {
-    id: "frs-1",
-    code: "FRN-0001",
-    nom: "SKF Algérie",
-    contact: "M. Boualem",
-    telephone: "021 00 00 01",
-    email: "contact@skf.dz",
-    adresse: "Zone Industrielle, Alger",
-    delaiMoyen: 7,
-    actif: true,
-    createdAt: new Date().toISOString(),
-  },
-];
-let mouvementsStock = [
-  {
-    id: "mvt-1",
-    articleId: "art-1",
-    articleDesignation: "Roulement SKF 6205",
-    articleRef: "SKF-6205",
-    type: "ENTREE",
-    motif: "REAPPROVISIONNEMENT",
-    quantite: 10,
-    quantiteAvant: 5,
-    quantiteApres: 15,
-    prixUnitaire: 4500,
-    valeurMouvement: 45000,
-    otId: null,
-    otNumero: null,
-    btId: null,
-    btNumero: null,
-    fournisseurId: "frs-1",
-    fournisseurNom: "SKF Algérie",
-    numeroBC: "BC-2026-0001",
-    numeroBL: "BL-2026-0001",
-    dateMouvement: new Date().toISOString(),
-    saisiPar: "Admin",
-    emplacementSource: "",
-    emplacementDest: "Rack A3",
-    observation: "",
-    createdAt: new Date().toISOString(),
-  },
-];
-let interventions = [
-  {
-    id: "int-1",
-    equipementId: "equip-1",
-    type: "PANNE",
-    motif: "Défaillance joint d'étanchéité",
-    dateArret: "2024-06-10T09:00:00",
-    dateReprise: "2024-06-11T14:00:00",
-    dureeReelleHeures: 29,
-    statut: "CLOTURE",
-    saisiPar: "Admin",
-    observation: "",
-    createdAt: "2024-06-10T09:00:00",
-  },
-  {
-    id: "int-2",
-    equipementId: "equip-1",
-    type: "MAINTENANCE",
-    motif: "Révision générale programmée",
-    dateArret: "2026-04-28T08:00:00",
-    dateReprise: null,
-    dureeReelleHeures: null,
-    statut: "EN_COURS",
-    saisiPar: "Admin",
-    observation: "",
-    createdAt: "2026-04-28T08:00:00",
-  },
-];
-let commandesAchat = [
-  {
-    id: "cmd-1",
-    numero: "BC-2026-0001",
-    fournisseurId: "frs-1",
-    fournisseurNom: "SKF Algérie",
-    statut: "LIVREE",
-    dateCommande: "2026-01-15",
-    dateLivraisonPrevue: "2026-01-22",
-    dateLivraisonReelle: "2026-01-21",
-    lignes: [
-      {
-        articleId: "art-1",
-        articleRef: "SKF-6205",
-        articleNom: "Roulement SKF 6205",
-        qtCommandee: 10,
-        qtLivree: 10,
-        prixUnitaire: 4500,
-        totalLigne: 45000,
-      },
-    ],
-    montantTotal: 45000,
-    observations: "",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-const company = {
-  id: "company-1",
-  name: "Entreprise Nationale Sonatrach",
-  code: "4@gml",
-  wilaya: "Alger",
-  daira: "Bab El Oued",
-  commune: "Bab El Oued",
-  createdAt: "1998-01-12",
-  phone: "+213 21 00 00 00",
-};
-
-const planningTravail = {
-  joursOuvres: [0, 1, 2, 3, 4],
-  heureDebut: 8,
-  heureFin: 17,
-  heuresParJour: 9,
-};
 
 const currentUser = `${company.name} / Admin`;
 
@@ -866,22 +930,6 @@ const equipConfigs = {
   },
 };
 
-let sites = [
-  {
-    id: "site-1",
-    code: "SKD-01",
-    name: "Site Skikda",
-    wilaya: "Skikda",
-    daira: "Skikda",
-    commune: "Skikda",
-    address: "Zone Industrielle",
-    manager: "A. Ferhat",
-    email: "a.ferhat@gmao.dz",
-    phone: "021000001",
-    description: "Site principal",
-  },
-];
-
 let treeData = [];
 
 const treeTypeMap = {
@@ -970,6 +1018,11 @@ const treeTypeMap = {
     icon: "fa-box-open",
     iconClass: "tree-icon-article",
   },
+  articlesRoot: {
+    level: "Articles",
+    icon: "fa-box-open",
+    iconClass: "tree-icon-article-group",
+  },
   sousensemble: {
     level: "Sous-ensemble",
     icon: "fa-layer-group",
@@ -987,131 +1040,6 @@ const treeViewMap = {
   organe: "view-organes",
   article: "view-articles",
 };
-
-let departments = [
-  {
-    id: "dept-1",
-    siteId: "site-1",
-    code: "DEP-UT",
-    name: "D\u00e9partement Utilit\u00e9s",
-    manager: "K. Benali",
-    email: "k.benali@gmao.dz",
-    phone: "021000010",
-    description: "Services utilit\u00e9s",
-  },
-];
-
-let workshops = [
-  {
-    id: "workshop-1",
-    departmentId: "dept-1",
-    code: "ATL-02",
-    name: "Atelier Maintenance",
-    surface: 450,
-    manager: "S. Kaci",
-    email: "s.kaci@gmao.dz",
-    phone: "021000020",
-    description: "Atelier principal",
-  },
-];
-
-let lines = [
-  {
-    id: "line-1",
-    workshopId: "workshop-1",
-    code: "SYS-AC",
-    name: "Ligne Air Comprim\u00e9",
-    functionMain: "Production air comprim\u00e9",
-    criticality: "A",
-    description: "Circuit principal",
-  },
-];
-
-let equipment = [
-  {
-    id: "equip-1",
-    lineId: "line-1",
-    tag: "CMP-501",
-    name: "Compresseur principal",
-    description: "Compresseur Atlas",
-    family: "Compression",
-    subFamily: "Air",
-    category: "Process",
-    criticality: "A",
-    manufacturer: "Atlas Copco",
-    model: "AC-400",
-    serialNumber: "AC-2021-7788",
-    purchaseDate: "2021-01-05",
-    commissioningDate: "2021-03-12",
-    acquisitionValue: 1200000,
-    currentValue: 950000,
-    lifetimeValue: 12,
-    lifetimeUnit: "années",
-    warrantyDate: "2026-03-12",
-    counterHours: 15200,
-    counterCycles: 4300,
-    counterDistance: 0,
-    counterUnit: "",
-    counterAlert: 18000,
-    photos: [],
-    documents: [],
-    notes: "Inspection trimestrielle.",
-  },
-];
-
-let subassemblies = [
-  {
-    id: "sub-1",
-    equipmentId: "equip-1",
-    code: "SUB-110",
-    name: "Module filtre",
-    functionMain: "Filtration",
-    replaceable: true,
-    description: "Module filtration principal",
-  },
-];
-
-let organs = [
-  {
-    id: "org-1",
-    subassemblyId: "sub-1",
-    code: "ORG-77",
-    name: "Organe lubrification",
-    nominalParameters: "Débit: 150 L/min, Pression: 200 bar",
-    alarmThresholds: "T° max: 85°C",
-    description: "Bloc lubrification",
-  },
-];
-
-let components = [
-  {
-    id: "comp-1",
-    organId: "org-1",
-    code: "CMP-88",
-    name: "Composant pompe",
-    material: "Acier inoxydable 316L",
-    dimensions: "Ø25mm",
-    description: "Pompe interne",
-  },
-];
-
-let spareParts = [
-  {
-    id: "spare-1",
-    componentId: "comp-1",
-    name: "Joint NBR 80x60",
-    supplierRef: "PR-887",
-    internalRef: "INT-554",
-    supplier: "SKF",
-    price: 8500,
-    leadTimeValue: 7,
-    leadTimeUnit: "jours",
-    stockMin: 4,
-    stockCurrent: 6,
-    location: "Rack A3",
-    description: "Joint d'\u00e9tanch\u00e9it\u00e9",
-  },
-];
 
 const entityConfigs = {
   company: {
@@ -2985,6 +2913,7 @@ const saveOrgForm = async (level) => {
   }
 
   const config = getOrgConfig(level);
+  const form = document.getElementById(config.formId);
   const items = [...getOrgItems(level)];
   const isEdit = orgFormContext?.mode === "edit";
   const parentItem = config.parentKey
@@ -3025,17 +2954,49 @@ const saveOrgForm = async (level) => {
         entrepriseId: ENTREPRISE_ID,
       };
 
+      if (config.parentKey) {
+        payload[config.parentKey] =
+          values[config.parentKey]?.trim() || undefined;
+      }
+
       if (level === "unites") {
         payload.directeur = values.directeur?.trim();
         payload.telephone = values.telephone?.trim();
         payload.email = values.email?.trim();
       }
       if (level === "divisions") {
+        // include contact fields expected by server-side validation
         payload.responsable = values.responsable?.trim();
         payload.telephone = values.telephone?.trim();
         payload.email = values.email?.trim();
-        payload.uniteId = values.uniteId?.trim() || undefined;
       }
+      const groupSelect = form.querySelector('[data-article-group="articles"]');
+      const familySelect = form.querySelector(
+        '[data-article-family="articles"]',
+      );
+      const subFamilySelect = form.querySelector(
+        '[data-article-subfamily="articles"]',
+      );
+      values.groupeId = groupSelect?.value?.trim() || undefined;
+      values.familleId = familySelect?.value?.trim() || undefined;
+      values.sousFamilleId = subFamilySelect?.value?.trim() || undefined;
+
+      // Nettoyer les valeurs de placeholder
+      if (
+        values.groupeId === "-- Non classifié --" ||
+        values.groupeId === "Sélectionner"
+      )
+        values.groupeId = undefined;
+      if (
+        values.familleId === "-- Non classifié --" ||
+        values.familleId === "Sélectionner"
+      )
+        values.familleId = undefined;
+      if (
+        values.sousFamilleId === "-- Non classifié --" ||
+        values.sousFamilleId === "Sélectionner"
+      )
+        values.sousFamilleId = undefined;
       if (level === "departements") {
         payload.chef = values.chef?.trim();
         payload.telephone = values.telephone?.trim();
@@ -5618,6 +5579,58 @@ const renderArticleOrganeOptions = (form) => {
     .join("");
 };
 
+const resolveArticleSelectedOrgane = (inputValue) => {
+  const selectedValue = inputValue?.trim();
+  if (!selectedValue) {
+    return null;
+  }
+
+  return (
+    organes.find(
+      (entry) =>
+        `[${entry.code}] ${entry.nom}` === selectedValue ||
+        selectedValue.startsWith(`[${entry.code}]`) ||
+        selectedValue === entry.nom,
+    ) ?? null
+  );
+};
+
+const syncArticleOrganeSelection = (form, { clearInput = false } = {}) => {
+  const input = form?.querySelector("[data-article-organe-search]");
+  if (!input) {
+    return null;
+  }
+
+  const selectedOrgane = resolveArticleSelectedOrgane(input.value);
+  if (!selectedOrgane) {
+    return null;
+  }
+
+  console.log("ORGANE SELECTED", selectedOrgane);
+
+  const equipement = equipements.find((eq) => eq.id === selectedOrgane.equipementId);
+  const exists = articleOrganeLinks.some(
+    (link) => link.organeId === selectedOrgane.id,
+  );
+
+  if (!exists) {
+    articleOrganeLinks.push({
+      organeId: selectedOrgane.id,
+      organeCode: selectedOrgane.code,
+      organeNom: selectedOrgane.nom,
+      equipementNom: equipement?.nom ?? "",
+      qteUtilisee: 1,
+    });
+  }
+
+  if (clearInput) {
+    input.value = "";
+  }
+
+  renderArticleOrganeLinks(form);
+  return selectedOrgane;
+};
+
 const renderArticleOrganeLinks = (form) => {
   const tableBody = form.querySelector("[data-article-organe-table]");
   if (!tableBody) {
@@ -5641,6 +5654,11 @@ const renderArticleOrganeLinks = (form) => {
 const openArticleForm = (level, mode, itemId) => {
   const config = getArticleConfig(level);
   const form = document.getElementById(config.formId);
+  articleOrganeLinks = [];
+
+setTimeout(() => {
+  syncArticleOrganeLinks(form);
+}, 100);
   const title = document.getElementById(config.titleId);
   if (!form || !title) {
     return;
@@ -5650,6 +5668,32 @@ const openArticleForm = (level, mode, itemId) => {
   form.classList.remove("was-validated");
   const items = getArticleItems(level);
   const existing = itemId ? items.find((item) => item.id === itemId) : null;
+  // Vider et recharger articleOrganeLinks depuis l'article existant
+  articleOrganeLinks.length = 0;
+  if (existing?.organeLinksJson) {
+    try {
+      const links = JSON.parse(existing.organeLinksJson);
+      links.forEach((link) => {
+        const organe = organes.find(
+          (o) => o.id === (link.OrganeId || link.organeId),
+        );
+        const equipement = equipements.find(
+          (eq) => eq.id === organe?.equipementId,
+        );
+        articleOrganeLinks.push({
+          organeId: link.OrganeId || link.organeId,
+          organeCode: organe?.code ?? "",
+          organeNom: (link.OrganeNom || link.organeNom || organe?.nom) ?? "",
+          equipementNom: equipement?.nom ?? link.EquipementNom ?? "",
+          qteUtilisee: link.QteUtilisee || link.qteUtilisee || 1,
+        });
+      });
+    } catch (e) {
+      console.warn("organeLinksJson parse error", e);
+    }
+  } else {
+    articleOrganeLinks.length = 0;
+  }
   const codeInput = form.querySelector("[data-field='code']");
   if (codeInput) {
     codeInput.value =
@@ -5693,31 +5737,31 @@ const openArticleForm = (level, mode, itemId) => {
   }
 
   if (level === "articles") {
-    const groupSelect = form.querySelector("[data-article-group]");
-    const familySelect = form.querySelector("[data-article-family]");
-    const subFamilySelect = form.querySelector("[data-article-subfamily]");
-    if (groupSelect && familySelect && subFamilySelect && existing?.groupeId) {
-      groupSelect.value = existing.groupeId;
-      cascadeArticleFamilies(existing.groupeId, familySelect, subFamilySelect);
-    }
-    if (familySelect && subFamilySelect && existing?.familleId) {
-      familySelect.value = existing.familleId;
-      cascadeArticleSubFamilies(existing.familleId, subFamilySelect);
-    }
-    if (subFamilySelect && existing?.sousFamilleId) {
-      subFamilySelect.value = existing.sousFamilleId;
+    const groupSelect = form.querySelector('[data-article-group="articles"]');
+    const familySelect = form.querySelector('[data-article-family="articles"]');
+    const subFamilySelect = form.querySelector(
+      '[data-article-subfamily="articles"]',
+    );
+
+    // Cas édition : charger depuis l'article existant
+    const targetGroupId = existing?.groupeId ?? null;
+    const targetFamilleId = existing?.familleId ?? null;
+    const targetSousFamilleId = existing?.sousFamilleId ?? null;
+
+    if (groupSelect && familySelect && subFamilySelect) {
+      if (targetGroupId) {
+        groupSelect.value = targetGroupId;
+        cascadeArticleFamilies(targetGroupId, familySelect, subFamilySelect);
+      }
+      if (targetFamilleId && familySelect) {
+        familySelect.value = targetFamilleId;
+        cascadeArticleSubFamilies(targetFamilleId, subFamilySelect);
+      }
+      if (targetSousFamilleId && subFamilySelect) {
+        subFamilySelect.value = targetSousFamilleId;
+      }
     }
     renderArticleTypeCards(form, existing?.type ?? "Pièce de rechange");
-    articleOrganeLinks = (existing?.organeLinks ?? []).map((link) => {
-      const organe = organes.find((entry) => entry.id === link.organeId);
-      return {
-        organeId: link.organeId,
-        organeCode: organe?.code ?? "",
-        organeNom: link.organeNom,
-        equipementNom: link.equipementNom,
-        qteUtilisee: link.qteUtilisee ?? 1,
-      };
-    });
     renderArticleOrganeOptions(form);
     renderArticleOrganeLinks(form);
     renderStockIndicator(form);
@@ -5756,12 +5800,31 @@ const readArticleFormValues = (level) => {
       "[data-article-type-group] .type-card.active",
     );
     values.type = activeType?.dataset.value ?? "Pièce de rechange";
-    values.organeLinks = articleOrganeLinks.map((link) => ({
-      organeId: link.organeId,
-      organeNom: link.organeNom,
-      equipementNom: link.equipementNom,
-      qteUtilisee: Number(link.qteUtilisee) || 1,
-    }));
+    const groupSelect = form.querySelector('[data-article-group="articles"]');
+    const familySelect = form.querySelector('[data-article-family="articles"]');
+    const subFamilySelect = form.querySelector(
+      '[data-article-subfamily="articles"]',
+    );
+    values.groupeId = groupSelect?.value?.trim() || undefined;
+    values.familleId = familySelect?.value?.trim() || undefined;
+    values.sousFamilleId = subFamilySelect?.value?.trim() || undefined;
+
+    // Nettoyer les valeurs de placeholder
+    if (
+      values.groupeId === "-- Non classifié --" ||
+      values.groupeId === "Sélectionner"
+    )
+      values.groupeId = undefined;
+    if (
+      values.familleId === "-- Non classifié --" ||
+      values.familleId === "Sélectionner"
+    )
+      values.familleId = undefined;
+    if (
+      values.sousFamilleId === "-- Non classifié --" ||
+      values.sousFamilleId === "Sélectionner"
+    )
+      values.sousFamilleId = undefined;
 
     const photoInput = form.querySelector("[data-field='photo']");
     if (photoInput?.files?.length) {
@@ -5802,13 +5865,13 @@ const saveArticleForm = async (level) => {
     const sousFamille = sousFamillesArticles.find(
       (sf) => sf.id === values.sousFamilleId,
     );
-    values.groupeNom = groupe?.nom ?? "";
-    values.familleNom = famille?.nom ?? "";
-    values.sousFamilleNom = sousFamille?.nom ?? "";
-    Object.assign(values, computeArticleStats(values));
+    values.groupeNom = groupe?.nom ?? undefined;
+    values.familleNom = famille?.nom ?? undefined;
+    values.sousFamilleNom = sousFamille?.nom ?? undefined;
   }
 
   if (level === "articles") {
+    syncArticleOrganeSelection(document.getElementById("form-articles"));
     try {
       const response = await fetch("?handler=SaveArticle", {
         method: "POST",
@@ -5910,9 +5973,28 @@ const openArticleDetail = (level, itemId) => {
       body.innerHTML = `
             <div class="mb-3">
               <span class="fw-bold fs-5">${item.nom}</span>
-            </div>
-            <div class="row g-3">
               <div class="col-md-6"><div class="text-muted small">Type</div><div class="fw-semibold">${articleConfigs[level]?.label || "Famille article"}</div></div>
+
+            navigateTo("view-articles");
+            openArticleForm("articles", "create");
+
+            // Délai pour laisser le form s'initialiser après form.reset()
+            setTimeout(() => {
+              const form = document.getElementById('form-articles');
+              if (!form) return;
+              const gSel = form.querySelector('[data-article-group="articles"]');
+              const fSel = form.querySelector('[data-article-family="articles"]');
+              const sSel = form.querySelector('[data-article-subfamily="articles"]');
+              if (gSel && fSel && sSel) {
+                gSel.value = groupId;
+                cascadeArticleFamilies(groupId, fSel, sSel);
+                setTimeout(() => {
+                  fSel.value = familyId;
+                  cascadeArticleSubFamilies(familyId, sSel);
+                  setTimeout(() => { sSel.value = sousFamilleId; }, 50);
+                }, 50);
+              }
+            }, 100);
               <div class="col-md-6"><div class="text-muted small">Groupe parent</div><div class="fw-semibold">${item.groupeNom || "-"}</div></div>
               <div class="col-md-6"><div class="text-muted small">Articles</div><div class="fw-semibold">${articleCount}</div></div>
             </div>
@@ -7497,6 +7579,29 @@ const buildTreeDetails = (node, context) => {
         Code: node.code,
         "Appartient \u00e0": context.equipmentName ?? "",
       };
+    case "groupeArticle":
+      return {
+        "Nb familles":
+          node.children?.filter((c) => c.type === "familleArticle").length ?? 0,
+        "Nb sous-familles":
+          node.children?.filter((c) => c.type === "sousFamilleArticle")
+            .length ?? 0,
+        "Nb articles": countNodesByType(node.children, "article"),
+      };
+    case "familleArticle":
+      return {
+        "Groupe parent": node.groupeNom ?? context.groupeArticleName ?? "",
+        "Nb sous-familles":
+          node.children?.filter((c) => c.type === "sousFamilleArticle")
+            .length ?? 0,
+        "Nb articles": countNodesByType(node.children, "article"),
+      };
+    case "sousFamilleArticle":
+      return {
+        "Groupe parent": node.groupeNom ?? context.groupeArticleName ?? "",
+        "Famille parente": node.familleNom ?? context.familleArticleName ?? "",
+        "Nb articles": countNodesByType(node.children, "article"),
+      };
     case "article":
       return {
         "R\u00e9f\u00e9rence": node.ref ?? node.reference,
@@ -7569,6 +7674,12 @@ const renderTreeNodes = (nodes, context) => {
       }
       if (node.type === "organe") {
         nodeContext.organeName = label;
+      }
+      if (node.type === "groupeArticle") {
+        nodeContext.groupeArticleName = label;
+      }
+      if (node.type === "familleArticle") {
+        nodeContext.familleArticleName = label;
       }
 
       const details = buildTreeDetails(node, nodeContext);
@@ -7664,6 +7775,10 @@ const getTreeNodeRawId = (node) => {
     equipement: "equipement-",
     organe: "organe-",
     article: "article-",
+    articlesRoot: "articles-",
+    groupeArticle: "groupearticle-",
+    familleArticle: "famillearticle-",
+    sousFamilleArticle: "sousfamillearticle-",
     sousensemble: "sousensemble-",
   };
 
@@ -7873,13 +7988,34 @@ const buildTreeCreateAction = (node) => {
       run: () => {
         const familyNode = getTreeAncestorByType(node, "familleArticle");
         const groupNode = getTreeAncestorByType(node, "groupeArticle");
-        navigateTo("view-articles");
-        openArticleForm("articles", "create");
         const groupId = getTreeNodeRawId(groupNode);
         const familyId = getTreeNodeRawId(familyNode);
-        setSelectValue("[data-article-group='articles']", groupId, true);
-        setSelectValue("[data-article-family='articles']", familyId, true);
-        setSelectValue("[data-article-subfamily='articles']", nodeRawId);
+        const sousFamilleId = nodeRawId;
+
+        navigateTo("view-articles");
+        openArticleForm("articles", "create");
+
+        // Délai pour laisser le form s'initialiser après form.reset()
+        setTimeout(() => {
+          const form = document.getElementById("form-articles");
+          if (!form) return;
+          const gSel = form.querySelector('[data-article-group="articles"]');
+          const fSel = form.querySelector('[data-article-family="articles"]');
+          const sSel = form.querySelector(
+            '[data-article-subfamily="articles"]',
+          );
+          if (gSel && fSel && sSel) {
+            gSel.value = groupId;
+            cascadeArticleFamilies(groupId, fSel, sSel);
+            setTimeout(() => {
+              fSel.value = familyId;
+              cascadeArticleSubFamilies(familyId, sSel);
+              setTimeout(() => {
+                sSel.value = sousFamilleId;
+              }, 50);
+            }, 50);
+          }
+        }, 100);
       },
     },
   };
@@ -9336,37 +9472,7 @@ document.addEventListener("click", (event) => {
   const addButton = event.target.closest("[data-article-organe-add]");
   if (addButton) {
     const form = addButton.closest("form");
-    const input = form?.querySelector("[data-article-organe-search]");
-    if (!input) {
-      return;
-    }
-
-    const selected = input.value.trim();
-    const organe = organes.find(
-      (entry) =>
-        `[${entry.code}] ${entry.nom}` === selected ||
-        selected.startsWith(`[${entry.code}]`),
-    );
-    if (!organe) {
-      return;
-    }
-
-    const equipement = equipements.find((eq) => eq.id === organe.equipementId);
-    const exists = articleOrganeLinks.some(
-      (link) => link.organeId === organe.id,
-    );
-    if (!exists) {
-      articleOrganeLinks.push({
-        organeId: organe.id,
-        organeCode: organe.code,
-        organeNom: organe.nom,
-        equipementNom: equipement?.nom ?? "",
-        qteUtilisee: 1,
-      });
-    }
-
-    input.value = "";
-    renderArticleOrganeLinks(form);
+    syncArticleOrganeSelection(form, { clearInput: true });
     return;
   }
 
@@ -9390,6 +9496,26 @@ document.addEventListener("input", (event) => {
     if (!Number.isNaN(index) && articleOrganeLinks[index]) {
       articleOrganeLinks[index].qteUtilisee = Number(target.value) || 1;
     }
+    return;
+  }
+
+  if (target.matches("[data-article-organe-search]")) {
+    const form = target.closest("form");
+    if (form) {
+      syncArticleOrganeSelection(form);
+    }
+  }
+});
+
+document.addEventListener("change", (event) => {
+  const target = event.target;
+  if (!target.matches("[data-article-organe-search]")) {
+    return;
+  }
+
+  const form = target.closest("form");
+  if (form) {
+    syncArticleOrganeSelection(form);
   }
 });
 
